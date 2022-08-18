@@ -1,46 +1,108 @@
 const std = @import("std");
 const w4 = @import("wasm4.zig");
 
-const Global = struct {
+const Options = struct {
     volume: u32 = 25,
-    frame: u32 = 0,
 };
 
-var global = Global{};
+const Gamepad = struct {
+    down: u8 = 0,
+    pressed: u8 = 0,
+    released: u8 = 0,
+    prev: u8 = 0,
 
-export fn start() void {
-    w4.PALETTE.* = .{
-        0x000022,
-        0xbbeebb,
-        0xdd9911,
-        0xaa1166,
+    fn update(self: *@This(), down: u8) void {
+        self.pressed = down & (down ^ self.prev);
+        self.released = self.prev & (down ^ self.prev);
+        self.prev = self.down;
+        self.down = down;
+    }
+
+    fn isDown(self: @This(), button: u8) bool {
+        return self.down & button != 0;
+    }
+
+    fn isPressed(self: @This(), button: u8) bool {
+        return self.pressed & button != 0;
+    }
+
+    fn isReleased(self: @This(), button: u8) bool {
+        return self.released & button != 0;
+    }
+};
+
+const Player = struct {
+    pos: Point(f64) = .{ .x = 50, .y = 30 },
+    move_dir: Point(f64) = .{},
+    move_speed: f64 = 2,
+
+    fn update(self: *@This()) void {
+        if (!gamepad.isDown(w4.BUTTON_LEFT) and !gamepad.isDown(w4.BUTTON_RIGHT)) {
+            self.move_dir.x = 0;
+        } else {
+            if (gamepad.isPressed(w4.BUTTON_LEFT) or gamepad.isReleased(w4.BUTTON_RIGHT)) self.move_dir.x = -1;
+            if (gamepad.isPressed(w4.BUTTON_RIGHT) or gamepad.isReleased(w4.BUTTON_LEFT)) self.move_dir.x = 1;
+        }
+        if (!gamepad.isDown(w4.BUTTON_UP) and !gamepad.isDown(w4.BUTTON_DOWN)) {
+            self.move_dir.y = 0;
+        } else {
+            if (gamepad.isPressed(w4.BUTTON_UP) or gamepad.isReleased(w4.BUTTON_DOWN)) self.move_dir.y = -1;
+            if (gamepad.isPressed(w4.BUTTON_DOWN) or gamepad.isReleased(w4.BUTTON_UP)) self.move_dir.y = 1;
+        }
+        self.move_dir.normalize();
+        self.pos.x += self.move_dir.x * self.move_speed;
+        self.pos.y += self.move_dir.y * self.move_speed;
+    }
+
+    fn draw(self: @This()) void {
+        const x: i32 = @floatToInt(i32, std.math.round(self.pos.x));
+        const y: i32 = @floatToInt(i32, std.math.round(self.pos.y));
+        w4.DRAW_COLORS.* = 0x33;
+        w4.oval(x - 4, y - 4, 9, 9);
+        w4.DRAW_COLORS.* = 2;
+        w4.rect(
+            x + @floatToInt(i32, std.math.round(self.move_dir.x * 3)),
+            y + @floatToInt(i32, std.math.round(self.move_dir.y * 3)),
+            1,
+            1,
+        );
+    }
+};
+
+fn Point(comptime T: type) type {
+    return struct {
+        x: T = 0,
+        y: T = 0,
+
+        fn normalize(self: *@This()) void {
+            const len = std.math.sqrt(self.x * self.x + self.y * self.y);
+            if (len > 0) {
+                self.x /= len;
+                self.y /= len;
+            }
+        }
     };
 }
 
-const smiley = [8]u8{
-    0b11000011,
-    0b10000001,
-    0b00100100,
-    0b00100100,
-    0b00000000,
-    0b00100100,
-    0b10011001,
-    0b11000011,
+var options = Options{};
+var gamepad = Gamepad{};
+var player = Player{};
+
+const palette: [4]u32 = .{
+    0x001111,
+    0xdddd99,
+    0x1166bb,
+    0xbb1166,
 };
 
-fn drawPixel(x: i32, y: i32) void {
-    const idx = (@intCast(usize, y) * 160 + @intCast(usize, x)) >> 2;
-    const shift = @intCast(u3, (x & 0b11) * 2);
-    const mask = @as(u8, 0b11) << shift;
-    const palette_color = @intCast(u8, w4.DRAW_COLORS.* & 0b1111);
-    if (palette_color == 0) return;
-    const color = (palette_color - 1) & 0b11;
-    w4.FRAMEBUFFER[idx] = (color << shift) | (w4.FRAMEBUFFER[idx] & ~mask);
+export fn start() void {
+    w4.PALETTE.* = palette;
 }
 
-fn drawInt(value: anytype, x: i32, y: i32, len: comptime_int) void {
-    var buffer: [len]u8 = undefined;
-    w4.text(std.fmt.bufPrintIntToSlice(buffer[0..], value, 10, .lower, .{}), x, y);
+export fn update() void {
+    gamepad.update(w4.GAMEPAD1.*);
+    player.update();
+    player.draw();
 }
 
 fn toneFrequency(freq1: u32, freq2: u32) u32 {
@@ -53,46 +115,4 @@ fn toneDuration(attack: u32, decay: u32, sustain: u32, release: u32) u32 {
 
 fn toneVolume(peak: u32, volume: u32) u32 {
     return (peak << 8) | volume;
-}
-
-export fn update() void {
-    global.frame += 1;
-
-    w4.DRAW_COLORS.* = 2;
-    w4.text("color 2", 10, 10);
-    w4.DRAW_COLORS.* = 3;
-    w4.text("color 3", 10, 20);
-    w4.DRAW_COLORS.* = 4;
-    w4.text("color 4", 10, 30);
-
-    w4.DRAW_COLORS.* = 2;
-    const gamepad = w4.GAMEPAD1.*;
-    if (gamepad & w4.BUTTON_1 != 0) {
-        w4.DRAW_COLORS.* = 3;
-        w4.tone(262, 60, global.volume, w4.TONE_PULSE1 | w4.TONE_PAN_RIGHT);
-    }
-    if (gamepad & w4.BUTTON_2 != 0) {
-        w4.DRAW_COLORS.* = 4;
-        w4.tone(262, 60, global.volume, w4.TONE_PULSE1 | w4.TONE_MODE3 | w4.TONE_PAN_LEFT);
-    }
-
-    w4.blit(&smiley, 76, 76, 8, 8, w4.BLIT_1BPP);
-    w4.text("Press \x80\x81 to blink", 10, 90);
-    w4.text("\x84\x85\x86\x87", 10, 100);
-
-    drawPixel(150, 10);
-    drawInt(global.frame, 10, 110, 12);
-
-    const mouse = w4.MOUSE_BUTTONS.*;
-    const mouseX = w4.MOUSE_X.*;
-    const mouseY = w4.MOUSE_Y.*;
-
-    if (mouse & w4.MOUSE_LEFT != 0) {
-        w4.DRAW_COLORS.* = 3;
-        w4.tone(toneFrequency(262, 523), 60, global.volume, w4.TONE_PULSE1);
-    }
-    if (mouse & w4.MOUSE_RIGHT != 0) {
-        w4.DRAW_COLORS.* = 4;
-    }
-    w4.rect(mouseX - 4, mouseY - 4, 8, 8);
 }
