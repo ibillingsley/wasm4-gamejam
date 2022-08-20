@@ -98,7 +98,7 @@ const Player = struct {
         // attack
         if (self.attack_timer > 0) {
             w4.DRAW_COLORS.* = 0x22;
-            drawCircle(x + round(i32, self.look_dir.x * 5), y + round(i32, self.look_dir.y * 5), 15);
+            drawCircle(x + round(i32, self.look_dir.x * 5), y + round(i32, self.look_dir.y * 5), 17);
             w4.DRAW_COLORS.* = 0x11;
             drawCircle(x, y, 15 - self.attack_timer);
         }
@@ -159,11 +159,12 @@ const Player = struct {
             .x = self.pos.x + self.look_dir.x * 5 - target.x,
             .y = self.pos.y + self.look_dir.y * 5 - target.y,
         };
-        return diff.length() < 7.5 + radius;
+        return diff.length() < 8.5 + radius;
     }
 
     fn kill(self: *@This()) void {
         self.alive = false;
+        end_frame = frame_count;
         sound(440, toneDur(50, 0, 50, 50), sound_vol, w4.TONE_TRIANGLE);
         sound(toneFreq(500, 100), toneDur(0, 0, 0, 80), sound_vol, w4.TONE_NOISE);
         scene = .gameover;
@@ -175,12 +176,28 @@ const Spider = struct {
     alive: bool = true,
     pos: Point(f64) = .{},
     speed: Point(f64) = .{},
-    speed_max: f64 = 1.5,
     dir: Point(f64) = .{},
     target_offset: Point(f64) = .{},
     anim: f64 = 1,
 
     const accel = 0.05;
+    const speed_max = 1.5;
+
+    fn init(id: usize) @This() {
+        const x = rng.float(f64) * 100;
+        const y = rng.float(f64) * 100;
+        return .{
+            .id = id,
+            .pos = .{
+                .x = if (x < 50) -50 - x else screen_size + 50 + x,
+                .y = if (y < 50) -50 - y else screen_size + 50 + y,
+            },
+            .target_offset = .{
+                .x = rng.float(f64) * 1.2 - 0.6,
+                .y = rng.float(f64) * 1.2 - 0.6,
+            },
+        };
+    }
 
     fn update(self: *@This(), player: *Player) void {
         var target = Point(f64){
@@ -211,9 +228,9 @@ const Spider = struct {
         if (self.speed.x != 0 or self.speed.y != 0) {
             self.dir = self.speed;
             self.dir.normalize();
-            if (self.speed.length() > self.speed_max) {
-                self.speed.x = self.dir.x * self.speed_max;
-                self.speed.y = self.dir.y * self.speed_max;
+            if (self.speed.length() > speed_max) {
+                self.speed.x = self.dir.x * speed_max;
+                self.speed.y = self.dir.y * speed_max;
             }
         }
         self.pos.x += self.speed.x;
@@ -231,16 +248,16 @@ const Spider = struct {
         const y: i32 = round(i32, self.pos.y);
         w4.DRAW_COLORS.* = 4;
         w4.line(
-            x + round(i32, self.dir.x * (2 + self.anim) + self.dir.y * 5),
-            y + round(i32, self.dir.y * (2 + self.anim) - self.dir.x * 5),
-            x - round(i32, self.dir.x * (2 + self.anim) + self.dir.y * 5),
-            y - round(i32, self.dir.y * (2 + self.anim) - self.dir.x * 5),
+            x + round(i32, self.dir.x * (2 + self.anim) + self.dir.y * 4),
+            y + round(i32, self.dir.y * (2 + self.anim) - self.dir.x * 4),
+            x - round(i32, self.dir.x * (2 + self.anim) + self.dir.y * 4),
+            y - round(i32, self.dir.y * (2 + self.anim) - self.dir.x * 4),
         );
         w4.line(
-            x + round(i32, self.dir.x * (2 - self.anim) - self.dir.y * 5),
-            y + round(i32, self.dir.y * (2 - self.anim) + self.dir.x * 5),
-            x - round(i32, self.dir.x * (2 - self.anim) - self.dir.y * 5),
-            y - round(i32, self.dir.y * (2 - self.anim) + self.dir.x * 5),
+            x + round(i32, self.dir.x * (2 - self.anim) - self.dir.y * 4),
+            y + round(i32, self.dir.y * (2 - self.anim) + self.dir.x * 4),
+            x - round(i32, self.dir.x * (2 - self.anim) - self.dir.y * 4),
+            y - round(i32, self.dir.y * (2 - self.anim) + self.dir.x * 4),
         );
         drawCircle(x, y, 5);
         drawPixel(
@@ -283,6 +300,8 @@ fn Point(comptime T: type) type {
 const screen_size: f64 = w4.SCREEN_SIZE;
 var scene: Scene = .title;
 var frame_count: u32 = 0;
+var start_frame: u32 = 0;
+var end_frame: u32 = 0;
 var sound_vol: f64 = 0.6;
 var wave: u32 = 0;
 var prng = std.rand.DefaultPrng.init(0);
@@ -304,9 +323,9 @@ export fn start() void {
 }
 
 export fn update() void {
+    frame_count += 1;
     switch (scene) {
         .game => {
-            frame_count += 1;
             gamepad1.update();
             player1.update(gamepad1);
             player1.draw();
@@ -319,32 +338,21 @@ export fn update() void {
                 }
             }
             if (wave_clear) {
+                wave += 1;
                 spiders.len = 0;
                 var id: usize = 0;
                 while (id < wave and id < spiders.capacity()) {
-                    spiders.append(.{
-                        .id = id,
-                        .speed_max = 1 + rng.float(f64),
-                        .pos = .{
-                            // todo fix spawn pos
-                            .x = rng.float(f64) * screen_size,
-                            .y = rng.float(f64) * screen_size,
-                        },
-                        .target_offset = .{
-                            .x = rng.float(f64) * 1.2 - 0.6,
-                            .y = rng.float(f64) * 1.2 - 0.6,
-                        },
-                    }) catch unreachable;
+                    spiders.append(Spider.init(id)) catch unreachable;
                     id += 1;
                 }
-                wave += 1;
             }
         },
         .title => {
             gamepad1.update();
             if (gamepad1.isPressed(w4.BUTTON_1) or gamepad1.isPressed(w4.BUTTON_2)) {
-                frame_count = 0;
-                wave = 1;
+                prng.seed(frame_count);
+                start_frame = frame_count;
+                wave = 0;
                 scene = .game;
                 player1 = Player{};
                 spiders.len = 0;
@@ -376,10 +384,10 @@ export fn update() void {
             w4.text("GAME OVER", 44, 50);
             w4.DRAW_COLORS.* = 2;
             w4.text("WAVE", 44, 80);
-            drawInt(wave, 84, 80, 10);
+            drawInt(wave, 84, 80, 9);
             w4.DRAW_COLORS.* = 3;
             w4.text("TIME", 44, 100);
-            drawInt(frame_count / 60, 84, 100, 10);
+            drawInt((end_frame - start_frame) / 60, 84, 100, 9);
         },
     }
 }
