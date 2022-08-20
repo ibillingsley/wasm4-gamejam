@@ -59,7 +59,6 @@ const Player = struct {
     const pos_max: f64 = screen_size - 5;
 
     fn update(self: *@This(), gamepad: Gamepad) void {
-        if (!self.alive) return;
         // timers
         if (self.attack_timer > attack_min) self.attack_timer -= 1;
         if (self.dodge_timer > dodge_min) self.dodge_timer -= 1;
@@ -134,7 +133,7 @@ const Player = struct {
     }
 
     fn collideBody(self: @This(), target: Point(f64), radius: f64) bool {
-        if (self.dodge_timer > 0) return false;
+        if (!self.alive or self.dodge_timer > 0) return false;
         var diff = Point(f64){
             .x = self.pos.x - target.x,
             .y = self.pos.y - target.y,
@@ -143,7 +142,7 @@ const Player = struct {
     }
 
     fn collideBlock(self: @This(), target: Point(f64), radius: f64) bool {
-        if (!self.blocking) return false;
+        if (!self.alive or !self.blocking) return false;
         var diff = Point(f64){
             .x = self.pos.x + self.look_dir.x * 2 - target.x,
             .y = self.pos.y + self.look_dir.y * 2 - target.y,
@@ -154,7 +153,7 @@ const Player = struct {
     }
 
     fn collideAttack(self: @This(), target: Point(f64), radius: f64) bool {
-        if (self.attack_timer <= 0) return false;
+        if (!self.alive or self.attack_timer <= 0) return false;
         var diff = Point(f64){
             .x = self.pos.x + self.look_dir.x * 5 - target.x,
             .y = self.pos.y + self.look_dir.y * 5 - target.y,
@@ -165,23 +164,27 @@ const Player = struct {
     fn kill(self: *@This()) void {
         self.alive = false;
         end_frame = frame_count;
+        (Explosion{ .pos = self.pos.toInt(i32), .duration = 25 }).show();
+        (Explosion{ .pos = self.pos.toInt(i32), .duration = 27, .timer = -3 }).show();
+        (Explosion{ .pos = self.pos.toInt(i32), .duration = 18, .timer = -8, .color = 0x20 }).show();
+        sound(toneFreq(240, 20), toneDur(0, 0, 0, 60), sound_vol, w4.TONE_NOISE);
         sound(440, toneDur(50, 0, 50, 50), sound_vol, w4.TONE_TRIANGLE);
-        sound(toneFreq(500, 100), toneDur(0, 0, 0, 80), sound_vol, w4.TONE_NOISE);
-        scene = .gameover;
     }
 };
 
 const Spider = struct {
     id: usize,
     alive: bool = true,
-    pos: Point(f64) = .{},
+    pos: Point(f64),
     speed: Point(f64) = .{},
     dir: Point(f64) = .{},
-    target_offset: Point(f64) = .{},
+    target_offset: Point(f64),
     anim: f64 = 1,
 
     const accel = 0.05;
     const speed_max = 1.5;
+    var buffer = std.BoundedArray(@This(), 100).init(0) catch unreachable;
+    var closest: f64 = -1;
 
     fn init(id: usize) @This() {
         const x = rng.float(f64) * 100;
@@ -200,12 +203,12 @@ const Spider = struct {
     }
 
     fn update(self: *@This(), player: *Player) void {
+        // collision
         var target = Point(f64){
             .x = player.pos.x - self.pos.x,
             .y = player.pos.y - self.pos.y,
         };
         const distance = target.length();
-        // collision
         if (player.collideAttack(self.pos, 6)) {
             self.kill();
         } else if (player.collideBlock(self.pos, 2.5)) {
@@ -236,11 +239,8 @@ const Spider = struct {
         self.pos.x += self.speed.x;
         self.pos.y += self.speed.y;
         // animation
-        const frame = frame_count + self.id;
-        if (frame % 5 == 0) self.anim *= -1;
-        if (distance < 100 and frame % 10 == 0) {
-            sound(60, toneDur(5, 0, 0, 5), sound_vol * (100 - distance) / 100, w4.TONE_PULSE2);
-        }
+        if ((frame_count + self.id) % 5 == 0) self.anim *= -1;
+        if (closest < 0 or distance < closest) closest = distance;
     }
 
     fn draw(self: @This()) void {
@@ -272,7 +272,35 @@ const Spider = struct {
 
     fn kill(self: *@This()) void {
         self.alive = false;
+        (Explosion{ .pos = self.pos.toInt(i32), .duration = 7 }).show();
         sound(toneFreq(200, 60), toneDur(0, 0, 0, 20), sound_vol, w4.TONE_NOISE);
+    }
+};
+
+const Explosion = struct {
+    alive: bool = true,
+    pos: Point(i32),
+    duration: i32,
+    timer: i32 = 0,
+    color: u16 = 0x40,
+
+    var buffer = std.BoundedArray(@This(), 10).init(0) catch unreachable;
+    var index: usize = 0;
+
+    fn show(self: @This()) void {
+        if (buffer.len < buffer.capacity()) _ = buffer.addOneAssumeCapacity();
+        buffer.set(index, self);
+        index = if (index < buffer.capacity() - 1) index + 1 else 0;
+    }
+
+    fn update(self: *@This()) void {
+        self.timer += 1;
+        if (self.timer > self.duration) self.alive = false;
+    }
+
+    fn draw(self: @This()) void {
+        w4.DRAW_COLORS.* = self.color;
+        if (self.timer > 0) drawCircle(self.pos.x, self.pos.y, self.timer * 2 - 1);
     }
 };
 
@@ -294,6 +322,13 @@ fn Point(comptime T: type) type {
                 self.y /= len;
             }
         }
+
+        fn toInt(self: @This(), comptime T2: type) Point(T2) {
+            return .{
+                .x = round(T2, self.x),
+                .y = round(T2, self.y),
+            };
+        }
     };
 }
 
@@ -308,7 +343,6 @@ var prng = std.rand.DefaultPrng.init(0);
 var rng: std.rand.Random = undefined;
 var gamepad1 = Gamepad{ .ptr = w4.GAMEPAD1 };
 var player1 = Player{};
-var spiders = std.BoundedArray(Spider, 100).init(0) catch unreachable;
 
 const palette: [4]u32 = .{
     0x000011,
@@ -326,25 +360,43 @@ export fn update() void {
     frame_count += 1;
     switch (scene) {
         .game => {
+            // player
             gamepad1.update();
-            player1.update(gamepad1);
-            player1.draw();
+            if (player1.alive) {
+                player1.update(gamepad1);
+                player1.draw();
+            }
+            // enemies
             var wave_clear = true;
-            for (spiders.slice()) |*spider| {
+            Spider.closest = -1;
+            for (Spider.buffer.slice()) |*spider| {
                 if (spider.alive) {
                     wave_clear = false;
                     spider.update(&player1);
                     spider.draw();
                 }
             }
+            if (Spider.closest >= 0 and Spider.closest < 100 and frame_count % 10 == 0) {
+                sound(60, toneDur(5, 0, 0, 5), sound_vol * (100 - Spider.closest) / 100, w4.TONE_PULSE2);
+            }
             if (wave_clear) {
                 wave += 1;
-                spiders.len = 0;
+                Spider.buffer.len = 0;
                 var id: usize = 0;
-                while (id < wave and id < spiders.capacity()) {
-                    spiders.append(Spider.init(id)) catch unreachable;
+                while (id < wave and id < Spider.buffer.capacity()) {
+                    Spider.buffer.appendAssumeCapacity(Spider.init(id));
                     id += 1;
                 }
+            }
+            // effects
+            for (Explosion.buffer.slice()) |*explosion| {
+                if (explosion.alive) {
+                    explosion.update();
+                    explosion.draw();
+                }
+            }
+            if (!player1.alive and frame_count - end_frame > 120) {
+                scene = .gameover;
             }
         },
         .title => {
@@ -355,7 +407,7 @@ export fn update() void {
                 wave = 0;
                 scene = .game;
                 player1 = Player{};
-                spiders.len = 0;
+                Spider.buffer.len = 0;
             }
             if (gamepad1.isPressed(w4.BUTTON_LEFT)) {
                 sound_vol = std.math.clamp(sound_vol - 0.2, 0, 1);
