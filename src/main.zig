@@ -44,7 +44,7 @@ const Gamepad = struct {
 
 const Player = struct {
     alive: bool = true,
-    pos: Point(f64) = .{ .x = w4.SCREEN_SIZE / 2, .y = w4.SCREEN_SIZE / 2 + 15 },
+    pos: Point(f64) = .{ .x = screen_size / 2, .y = screen_size / 2 + 15 },
     move_speed: f64 = 2,
     move_dir: Point(f64) = .{},
     look_dir: Point(f64) = .{ .x = 0, .y = -1 },
@@ -55,8 +55,8 @@ const Player = struct {
 
     const attack_min = -5;
     const dodge_min = -10;
-    const pos_min = 4;
-    const pos_max = @intToFloat(f64, w4.SCREEN_SIZE) - 5;
+    const pos_min: f64 = 4;
+    const pos_max: f64 = screen_size - 5;
 
     fn update(self: *@This(), gamepad: Gamepad) void {
         if (!self.alive) return;
@@ -148,12 +148,12 @@ const Player = struct {
             .x = self.pos.x + self.look_dir.x * 2 - target.x,
             .y = self.pos.y + self.look_dir.y * 2 - target.y,
         };
-        return diff.length() < (7 + radius) and
+        return diff.length() < (7.5 + radius) and
             diff.x * self.look_dir.x <= 0 and
             diff.y * self.look_dir.y <= 0;
     }
 
-    fn collidAttack(self: @This(), target: Point(f64), radius: f64) bool {
+    fn collideAttack(self: @This(), target: Point(f64), radius: f64) bool {
         if (self.attack_timer <= 0) return false;
         var diff = Point(f64){
             .x = self.pos.x + self.look_dir.x * 5 - target.x,
@@ -171,56 +171,57 @@ const Player = struct {
 };
 
 const Spider = struct {
+    id: usize,
     alive: bool = true,
-    pos: Point(f64) = .{ .x = w4.SCREEN_SIZE / 2, .y = 20 },
-    speed: f64 = 0,
-    dir: Point(f64) = .{ .x = 1, .y = 1 },
-    target_offset: Point(f64) = .{ .x = offset_max, .y = offset_max },
+    pos: Point(f64) = .{},
+    speed: Point(f64) = .{},
+    speed_max: f64 = 1.5,
+    dir: Point(f64) = .{},
+    target_offset: Point(f64) = .{},
     anim: f64 = 1,
 
-    const accel = 0.02;
-    const turn_speed = 0.05;
-    const speed_max = 1.5;
-    const offset_max = 0.6;
+    const accel = 0.05;
 
     fn update(self: *@This(), player: *Player) void {
-        if (!self.alive) return;
         var target = Point(f64){
             .x = player.pos.x - self.pos.x,
             .y = player.pos.y - self.pos.y,
         };
         const distance = target.length();
         // collision
-        if (player.collidAttack(self.pos, 6)) {
+        if (player.collideAttack(self.pos, 6)) {
             self.kill();
         } else if (player.collideBlock(self.pos, 2.5)) {
             const bump = std.math.max(11 - distance, 1.5);
             self.pos.x += player.look_dir.x * bump;
             self.pos.y += player.look_dir.y * bump;
-            self.speed = std.math.min(self.speed, 1);
+            self.speed.x += player.look_dir.x * 0.6;
+            self.speed.y += player.look_dir.y * 0.6;
             sound(500, toneDur(0, 0, 0, 3), sound_vol * 0.3, w4.TONE_NOISE);
         } else if (player.collideBody(self.pos, 2.5)) {
             player.kill();
         }
-        // targeting
+        // movement
         target.x += self.target_offset.x * distance;
         target.y += self.target_offset.y * distance;
         // drawPixel(round(i32, self.pos.x + target.x), round(i32, self.pos.y + target.y));
         target.normalize();
-        const turn_diff = Point(f64){
-            .x = target.x - self.dir.x,
-            .y = target.y - self.dir.y,
-        };
-        self.speed = std.math.clamp(self.speed + accel - (turn_diff.length() * accel), 0, speed_max);
-        // movement
-        self.dir.x += target.x * turn_speed;
-        self.dir.y += target.y * turn_speed;
-        self.dir.normalize();
-        self.pos.x += self.dir.x * self.speed;
-        self.pos.y += self.dir.y * self.speed;
+        self.speed.x += target.x * accel;
+        self.speed.y += target.y * accel;
+        if (self.speed.x != 0 or self.speed.y != 0) {
+            self.dir = self.speed;
+            self.dir.normalize();
+            if (self.speed.length() > self.speed_max) {
+                self.speed.x = self.dir.x * self.speed_max;
+                self.speed.y = self.dir.y * self.speed_max;
+            }
+        }
+        self.pos.x += self.speed.x;
+        self.pos.y += self.speed.y;
         // animation
-        if (frame_count % 5 == 0) self.anim *= -1;
-        if (distance < 100 and frame_count % 10 == 0) {
+        const frame = frame_count + self.id;
+        if (frame % 5 == 0) self.anim *= -1;
+        if (distance < 100 and frame % 10 == 0) {
             sound(60, toneDur(5, 0, 0, 5), sound_vol * (100 - distance) / 100, w4.TONE_PULSE2);
         }
     }
@@ -279,25 +280,27 @@ fn Point(comptime T: type) type {
     };
 }
 
+const screen_size: f64 = w4.SCREEN_SIZE;
 var scene: Scene = .title;
 var frame_count: u32 = 0;
 var sound_vol: f64 = 0.6;
-var wave: u32 = 1;
+var wave: u32 = 0;
 var prng = std.rand.DefaultPrng.init(0);
+var rng: std.rand.Random = undefined;
 var gamepad1 = Gamepad{ .ptr = w4.GAMEPAD1 };
 var player1 = Player{};
-var spider = Spider{};
+var spiders = std.BoundedArray(Spider, 100).init(0) catch unreachable;
 
 const palette: [4]u32 = .{
-    0x001111,
+    0x000011,
     0xdddd99,
-    0x1166bb,
-    0xbb1166,
+    0x1166cc,
+    0xcc1166,
 };
 
 export fn start() void {
     w4.PALETTE.* = palette;
-    // @intToPtr(*bool, 0x1f).* = true;
+    rng = prng.random();
 }
 
 export fn update() void {
@@ -307,8 +310,35 @@ export fn update() void {
             gamepad1.update();
             player1.update(gamepad1);
             player1.draw();
-            spider.update(&player1);
-            spider.draw();
+            var wave_clear = true;
+            for (spiders.slice()) |*spider| {
+                if (spider.alive) {
+                    wave_clear = false;
+                    spider.update(&player1);
+                    spider.draw();
+                }
+            }
+            if (wave_clear) {
+                spiders.len = 0;
+                var id: usize = 0;
+                while (id < wave and id < spiders.capacity()) {
+                    spiders.append(.{
+                        .id = id,
+                        .speed_max = 1 + rng.float(f64),
+                        .pos = .{
+                            // todo fix spawn pos
+                            .x = rng.float(f64) * screen_size,
+                            .y = rng.float(f64) * screen_size,
+                        },
+                        .target_offset = .{
+                            .x = rng.float(f64) * 1.2 - 0.6,
+                            .y = rng.float(f64) * 1.2 - 0.6,
+                        },
+                    }) catch unreachable;
+                    id += 1;
+                }
+                wave += 1;
+            }
         },
         .title => {
             gamepad1.update();
@@ -317,7 +347,7 @@ export fn update() void {
                 wave = 1;
                 scene = .game;
                 player1 = Player{};
-                spider = Spider{};
+                spiders.len = 0;
             }
             if (gamepad1.isPressed(w4.BUTTON_LEFT)) {
                 sound_vol = std.math.clamp(sound_vol - 0.2, 0, 1);
