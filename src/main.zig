@@ -7,7 +7,7 @@ const Gamepad = struct {
     prev: u8 = 0,
     pressed: u8 = 0,
     released: u8 = 0,
-    axis: Point(f64) = .{},
+    axis: Vec(f64) = .{},
 
     fn update(self: *@This()) void {
         self.prev = self.down;
@@ -44,11 +44,11 @@ const Gamepad = struct {
 
 const Player = struct {
     alive: bool = true,
-    pos: Point(f64) = .{ .x = screen_size / 2, .y = screen_size / 2 + 15 },
+    pos: Vec(f64) = .{ .x = screen_size / 2, .y = screen_size / 2 + 15 },
     move_speed: f64 = 2,
-    move_dir: Point(f64) = .{},
-    look_dir: Point(f64) = .{ .x = 0, .y = -1 },
-    dodge_dir: Point(f64) = .{ .x = 0, .y = -1 },
+    move_dir: Vec(f64) = .{},
+    look_dir: Vec(f64) = .{ .x = 0, .y = -1 },
+    dodge_dir: Vec(f64) = .{ .x = 0, .y = -1 },
     dodge_timer: i32 = dodge_min,
     attack_timer: i32 = attack_min,
     blocking: bool = false,
@@ -132,18 +132,14 @@ const Player = struct {
         }
     }
 
-    fn collideBody(self: @This(), target: Point(f64), radius: f64) bool {
+    fn collideBody(self: @This(), target: Vec(f64), radius: f64) bool {
         if (!self.alive or self.dodge_timer > 0) return false;
-        var diff = Point(f64){
-            .x = self.pos.x - target.x,
-            .y = self.pos.y - target.y,
-        };
-        return diff.length() < 4.5 + radius;
+        return self.pos.distance(target) < 4.5 + radius;
     }
 
-    fn collideBlock(self: @This(), target: Point(f64), radius: f64) bool {
+    fn collideBlock(self: @This(), target: Vec(f64), radius: f64) bool {
         if (!self.alive or !self.blocking) return false;
-        var diff = Point(f64){
+        var diff = Vec(f64){
             .x = self.pos.x + self.look_dir.x * 2 - target.x,
             .y = self.pos.y + self.look_dir.y * 2 - target.y,
         };
@@ -152,9 +148,9 @@ const Player = struct {
             diff.y * self.look_dir.y <= 0;
     }
 
-    fn collideAttack(self: @This(), target: Point(f64), radius: f64) bool {
+    fn collideAttack(self: @This(), target: Vec(f64), radius: f64) bool {
         if (!self.alive or self.attack_timer <= 0) return false;
-        var diff = Point(f64){
+        var diff = Vec(f64){
             .x = self.pos.x + self.look_dir.x * 5 - target.x,
             .y = self.pos.y + self.look_dir.y * 5 - target.y,
         };
@@ -164,9 +160,9 @@ const Player = struct {
     fn kill(self: *@This()) void {
         self.alive = false;
         end_frame = frame_count;
-        (Explosion{ .pos = self.pos.toInt(i32), .duration = 25 }).show();
-        (Explosion{ .pos = self.pos.toInt(i32), .duration = 27, .timer = -3 }).show();
-        (Explosion{ .pos = self.pos.toInt(i32), .duration = 18, .timer = -8, .color = 0x20 }).show();
+        (Explosion{ .pos = self.pos.toInt(i32), .duration = 25 }).spawn();
+        (Explosion{ .pos = self.pos.toInt(i32), .duration = 27, .timer = -3 }).spawn();
+        (Explosion{ .pos = self.pos.toInt(i32), .duration = 18, .timer = -8, .color = 0x20 }).spawn();
         sound(toneFreq(240, 20), toneDur(0, 0, 0, 60), sound_vol, w4.TONE_NOISE);
         sound(440, toneDur(50, 0, 50, 50), sound_vol, w4.TONE_TRIANGLE);
     }
@@ -175,11 +171,10 @@ const Player = struct {
 const Spider = struct {
     id: usize,
     alive: bool = true,
-    pos: Point(f64),
-    speed: Point(f64) = .{},
-    dir: Point(f64) = .{},
-    target_offset: Point(f64),
-    anim: f64 = 1,
+    pos: Vec(f64),
+    speed: Vec(f64) = .{},
+    dir: Vec(f64) = .{},
+    target_offset: Vec(f64),
 
     const accel = 0.05;
     const speed_max = 1.5;
@@ -192,8 +187,8 @@ const Spider = struct {
         return .{
             .id = id,
             .pos = .{
-                .x = if (x < 50) -50 - x else screen_size + 50 + x,
-                .y = if (y < 50) -50 - y else screen_size + 50 + y,
+                .x = if (x < 50) -50 - x else screen_size + 50 + (x - 50),
+                .y = if (y < 50) -50 - y else screen_size + 50 + (y - 50),
             },
             .target_offset = .{
                 .x = rng.float(f64) * 1.2 - 0.6,
@@ -204,19 +199,16 @@ const Spider = struct {
 
     fn update(self: *@This(), player: *Player) void {
         // collision
-        var target = Point(f64){
-            .x = player.pos.x - self.pos.x,
-            .y = player.pos.y - self.pos.y,
-        };
+        var target = player.pos.subtract(self.pos);
         const distance = target.length();
+        if (closest < 0 or distance < closest) closest = distance;
         if (player.collideAttack(self.pos, 6)) {
             self.kill();
         } else if (player.collideBlock(self.pos, 2.5)) {
             const bump = std.math.max(11 - distance, 1.5);
             self.pos.x += player.look_dir.x * bump;
             self.pos.y += player.look_dir.y * bump;
-            self.speed.x += player.look_dir.x * 0.6;
-            self.speed.y += player.look_dir.y * 0.6;
+            self.speed.reflect(player.look_dir);
             sound(500, toneDur(0, 0, 0, 3), sound_vol * 0.3, w4.TONE_NOISE);
         } else if (player.collideBody(self.pos, 2.5)) {
             player.kill();
@@ -238,26 +230,24 @@ const Spider = struct {
         }
         self.pos.x += self.speed.x;
         self.pos.y += self.speed.y;
-        // animation
-        if ((frame_count + self.id) % 5 == 0) self.anim *= -1;
-        if (closest < 0 or distance < closest) closest = distance;
     }
 
     fn draw(self: @This()) void {
         const x: i32 = round(i32, self.pos.x);
         const y: i32 = round(i32, self.pos.y);
+        const flip: f64 = if ((frame_count / 5 + self.id) % 2 == 0) 1 else -1;
         w4.DRAW_COLORS.* = 4;
         w4.line(
-            x + round(i32, self.dir.x * (2 + self.anim) + self.dir.y * 4),
-            y + round(i32, self.dir.y * (2 + self.anim) - self.dir.x * 4),
-            x - round(i32, self.dir.x * (2 + self.anim) + self.dir.y * 4),
-            y - round(i32, self.dir.y * (2 + self.anim) - self.dir.x * 4),
+            x + round(i32, self.dir.x * (2 + flip) + self.dir.y * 4),
+            y + round(i32, self.dir.y * (2 + flip) - self.dir.x * 4),
+            x - round(i32, self.dir.x * (2 + flip) + self.dir.y * 4),
+            y - round(i32, self.dir.y * (2 + flip) - self.dir.x * 4),
         );
         w4.line(
-            x + round(i32, self.dir.x * (2 - self.anim) - self.dir.y * 4),
-            y + round(i32, self.dir.y * (2 - self.anim) + self.dir.x * 4),
-            x - round(i32, self.dir.x * (2 - self.anim) - self.dir.y * 4),
-            y - round(i32, self.dir.y * (2 - self.anim) + self.dir.x * 4),
+            x + round(i32, self.dir.x * (2 - flip) - self.dir.y * 4),
+            y + round(i32, self.dir.y * (2 - flip) + self.dir.x * 4),
+            x - round(i32, self.dir.x * (2 - flip) - self.dir.y * 4),
+            y - round(i32, self.dir.y * (2 - flip) + self.dir.x * 4),
         );
         drawCircle(x, y, 5);
         drawPixel(
@@ -273,14 +263,184 @@ const Spider = struct {
     fn kill(self: *@This()) void {
         self.alive = false;
         kills += 1;
-        (Explosion{ .pos = self.pos.toInt(i32), .duration = 7 }).show();
+        (Explosion{ .pos = self.pos.toInt(i32), .duration = 7 }).spawn();
         sound(toneFreq(200, 60), toneDur(0, 0, 0, 20), sound_vol, w4.TONE_NOISE);
+    }
+};
+
+const Cannon = struct {
+    id: usize,
+    alive: bool = true,
+    pos: Vec(f64),
+    speed: Vec(f64) = .{},
+    dir: Vec(f64) = .{},
+    look_dir: Vec(f64) = .{},
+    target_offset: Vec(f64),
+
+    const accel = 0.01;
+    const speed_max = 0.4;
+    var buffer = std.BoundedArray(@This(), 20).init(0) catch unreachable;
+
+    fn init(id: usize) @This() {
+        const x = rng.float(f64) * 100;
+        const y = rng.float(f64) * 100;
+        return .{
+            .id = id,
+            .pos = .{
+                .x = if (x < 50) -10 - x else screen_size + 10 + (x - 50),
+                .y = if (y < 50) -10 - y else screen_size + 10 + (y - 50),
+            },
+            .target_offset = .{
+                .x = rng.float(f64) * 1.2 - 0.6,
+                .y = rng.float(f64) * 1.2 - 0.6,
+            },
+        };
+    }
+
+    fn update(self: *@This(), player: *Player) void {
+        // collision
+        var target = player.pos.subtract(self.pos);
+        const distance = target.length();
+        if (player.collideAttack(self.pos, 7)) {
+            self.kill();
+        } else if (player.collideBlock(self.pos, 3)) {
+            const bump = std.math.max(11 - distance, 1.5);
+            self.pos.x += player.look_dir.x * bump;
+            self.pos.y += player.look_dir.y * bump;
+            self.speed.reflect(player.look_dir);
+            sound(500, toneDur(0, 0, 0, 3), sound_vol * 0.3, w4.TONE_NOISE);
+        } else if (player.collideBody(self.pos, 3)) {
+            player.kill();
+        }
+        // movement
+        var move_target: Vec(f64) = .{
+            .x = target.x + self.target_offset.x * distance,
+            .y = target.y + self.target_offset.y * distance,
+        };
+        move_target.normalize();
+        self.speed.x += move_target.x * accel;
+        self.speed.y += move_target.y * accel;
+        if (self.speed.x != 0 or self.speed.y != 0) {
+            self.dir = self.speed;
+            self.dir.normalize();
+            if (self.speed.length() > speed_max) {
+                self.speed.x = self.dir.x * speed_max;
+                self.speed.y = self.dir.y * speed_max;
+            }
+        }
+        self.pos.x += self.speed.x;
+        self.pos.y += self.speed.y;
+        // shoot
+        target.normalize();
+        self.look_dir = target;
+        if (self.pos.x > 0 and self.pos.x < screen_size and
+            self.pos.y > 0 and self.pos.y < screen_size and
+            (frame_count + self.id * 10) % 100 == 0)
+        {
+            (Projectile{
+                .pos = .{ .x = self.pos.x + self.look_dir.x * 4, .y = self.pos.y + self.look_dir.y * 4 },
+                .speed = .{ .x = target.x * 2, .y = target.y * 2 },
+                .duration = 80,
+            }).spawn();
+            sound(toneFreq(300, 100), toneDur(0, 0, 0, 10), sound_vol * 0.7, w4.TONE_PULSE1 | w4.TONE_MODE2);
+        }
+    }
+
+    fn draw(self: @This()) void {
+        const x: i32 = round(i32, self.pos.x);
+        const y: i32 = round(i32, self.pos.y);
+        w4.DRAW_COLORS.* = 0x33;
+        drawCircle(x + round(i32, self.dir.y * 4), y - round(i32, self.dir.x * 4), 3);
+        drawCircle(x - round(i32, self.dir.y * 4), y + round(i32, self.dir.x * 4), 3);
+        w4.DRAW_COLORS.* = 4;
+        w4.line(
+            x - round(i32, self.look_dir.x * 3.5),
+            y - round(i32, self.look_dir.y * 3.5),
+            x + round(i32, self.look_dir.x * 4),
+            y + round(i32, self.look_dir.y * 4),
+        );
+        w4.line(
+            x - round(i32, self.look_dir.x * 3 + self.look_dir.y * 0.5),
+            y - round(i32, self.look_dir.y * 3 - self.look_dir.x * 0.5),
+            x + round(i32, self.look_dir.x * 5 - self.look_dir.y * 0.5),
+            y + round(i32, self.look_dir.y * 5 + self.look_dir.x * 0.5),
+        );
+        w4.line(
+            x - round(i32, self.look_dir.x * 3 - self.look_dir.y * 0.5),
+            y - round(i32, self.look_dir.y * 3 + self.look_dir.x * 0.5),
+            x + round(i32, self.look_dir.x * 5 + self.look_dir.y * 0.5),
+            y + round(i32, self.look_dir.y * 5 - self.look_dir.x * 0.5),
+        );
+    }
+
+    fn kill(self: *@This()) void {
+        self.alive = false;
+        kills += 1;
+        (Explosion{ .pos = self.pos.toInt(i32), .duration = 8 }).spawn();
+        sound(toneFreq(180, 50), toneDur(0, 0, 0, 22), sound_vol, w4.TONE_NOISE);
+    }
+};
+
+const Projectile = struct {
+    alive: bool = true,
+    pos: Vec(f64),
+    speed: Vec(f64),
+    duration: i32,
+    timer: i32 = 0,
+    hostile: bool = true,
+
+    var buffer = std.BoundedArray(@This(), 20).init(0) catch unreachable;
+    var index: usize = 0;
+
+    fn spawn(self: @This()) void {
+        if (buffer.len < buffer.capacity()) _ = buffer.addOneAssumeCapacity();
+        buffer.set(index, self);
+        index = if (index < buffer.capacity() - 1) index + 1 else 0;
+    }
+
+    fn update(self: *@This(), player: *Player) void {
+        self.timer += 1;
+        if (self.timer > self.duration) self.alive = false;
+        // collision
+        if (self.hostile) {
+            if (player.collideAttack(self.pos, 3)) {
+                self.alive = false;
+            } else if (player.collideBlock(self.pos, 3)) {
+                self.hostile = false;
+                self.timer = 0;
+                self.speed.reflect(player.look_dir);
+                sound(500, toneDur(0, 0, 0, 3), sound_vol * 0.7, w4.TONE_NOISE);
+            } else if (player.collideBody(self.pos, 1)) {
+                player.kill();
+            }
+        } else {
+            for (Spider.buffer.slice()) |*spider| {
+                if (spider.alive and self.pos.distance(spider.pos) < 5) {
+                    spider.kill();
+                }
+            }
+            for (Cannon.buffer.slice()) |*cannon| {
+                if (cannon.alive and self.pos.distance(cannon.pos) < 6) {
+                    cannon.kill();
+                }
+            }
+        }
+        // movement
+        self.pos.x += self.speed.x;
+        self.pos.y += self.speed.y;
+    }
+
+    fn draw(self: @This()) void {
+        const x: i32 = round(i32, self.pos.x);
+        const y: i32 = round(i32, self.pos.y);
+        w4.DRAW_COLORS.* = if (self.hostile) 0x22 else 0x21;
+        drawCircle(x, y, 3);
     }
 };
 
 const Explosion = struct {
     alive: bool = true,
-    pos: Point(i32),
+    pos: Vec(i32),
     duration: i32,
     timer: i32 = 0,
     color: u16 = 0x40,
@@ -288,7 +448,7 @@ const Explosion = struct {
     var buffer = std.BoundedArray(@This(), 10).init(0) catch unreachable;
     var index: usize = 0;
 
-    fn show(self: @This()) void {
+    fn spawn(self: @This()) void {
         if (buffer.len < buffer.capacity()) _ = buffer.addOneAssumeCapacity();
         buffer.set(index, self);
         index = if (index < buffer.capacity() - 1) index + 1 else 0;
@@ -305,18 +465,34 @@ const Explosion = struct {
     }
 };
 
-const Scene = enum { title, game, gameover };
-
-fn Point(comptime T: type) type {
+fn Vec(comptime T: type) type {
     return struct {
+        const Self = @This();
+
         x: T = 0,
         y: T = 0,
 
-        fn length(self: @This()) T {
+        fn length(self: Self) T {
             return std.math.sqrt(self.x * self.x + self.y * self.y);
         }
 
-        fn normalize(self: *@This()) void {
+        fn dot(self: Self, vec: Self) T {
+            return self.x * vec.x + self.y * vec.y;
+        }
+
+        fn add(self: Self, vec: Self) Self {
+            return .{ .x = self.x + vec.x, .y = self.y + vec.y };
+        }
+
+        fn subtract(self: Self, vec: Self) Self {
+            return .{ .x = self.x - vec.x, .y = self.y - vec.y };
+        }
+
+        fn distance(self: Self, vec: Self) T {
+            return self.subtract(vec).length();
+        }
+
+        fn normalize(self: *Self) void {
             const len = self.length();
             if (len > 0) {
                 self.x /= len;
@@ -324,7 +500,13 @@ fn Point(comptime T: type) type {
             }
         }
 
-        fn toInt(self: @This(), comptime T2: type) Point(T2) {
+        fn reflect(self: *Self, normal: Self) void {
+            const d = self.dot(normal);
+            self.x -= 2 * d * normal.x;
+            self.y -= 2 * d * normal.y;
+        }
+
+        fn toInt(self: Self, comptime T2: type) Vec(T2) {
             return .{
                 .x = round(T2, self.x),
                 .y = round(T2, self.y),
@@ -334,6 +516,7 @@ fn Point(comptime T: type) type {
 }
 
 const screen_size: f64 = w4.SCREEN_SIZE;
+const Scene = enum { title, game, gameover };
 var scene: Scene = .title;
 var frame_count: u32 = 0;
 var start_frame: u32 = 0;
@@ -360,112 +543,158 @@ export fn start() void {
     load();
 }
 
+fn startGame() void {
+    prng.seed(frame_count);
+    start_frame = frame_count;
+    wave = 0;
+    kills = 0;
+    player1 = Player{};
+    Spider.buffer.len = 0;
+    Cannon.buffer.len = 0;
+    Projectile.buffer.len = 0;
+    Projectile.index = 0;
+    Explosion.buffer.len = 0;
+    Explosion.index = 0;
+    scene = .game;
+}
+
 export fn update() void {
     frame_count += 1;
     switch (scene) {
         .game => {
-            // player
-            gamepad1.update();
-            if (player1.alive) {
-                player1.update(gamepad1);
-                player1.draw();
-            }
-            // enemies
-            var wave_clear = true;
-            Spider.closest = -1;
-            for (Spider.buffer.slice()) |*spider| {
-                if (spider.alive) {
-                    wave_clear = false;
-                    spider.update(&player1);
-                    spider.draw();
-                }
-            }
-            if (Spider.closest >= 0 and Spider.closest < 100 and frame_count % 10 == 0) {
-                sound(60, toneDur(5, 0, 0, 5), sound_vol * (100 - Spider.closest) / 100, w4.TONE_PULSE2);
-            }
-            if (wave_clear) {
-                wave += 1;
-                Spider.buffer.len = 0;
-                var id: usize = 0;
-                while (id < wave and id < Spider.buffer.capacity()) {
-                    Spider.buffer.appendAssumeCapacity(Spider.init(id));
-                    id += 1;
-                }
-            }
-            // effects
-            for (Explosion.buffer.slice()) |*explosion| {
-                if (explosion.alive) {
-                    explosion.update();
-                    explosion.draw();
-                }
-            }
-            if (!player1.alive and frame_count - end_frame > 120) {
-                scene = .gameover;
-            }
+            updateGame();
         },
         .title => {
-            gamepad1.update();
-            if (gamepad1.isReleased(w4.BUTTON_1) or gamepad1.isReleased(w4.BUTTON_2)) {
-                prng.seed(frame_count);
-                start_frame = frame_count;
-                wave = 0;
-                kills = 0;
-                scene = .game;
-                player1 = Player{};
-                Spider.buffer.len = 0;
-                sound(440, toneDur(0, 0, 0, 20), sound_vol, w4.TONE_TRIANGLE);
-            }
-            if (gamepad1.isReleased(w4.BUTTON_LEFT)) {
-                sound_vol = std.math.clamp(sound_vol - 0.2, 0, 1);
-                sound(toneFreq(200, 40), 10, sound_vol, w4.TONE_PULSE1);
-                save();
-            }
-            if (gamepad1.isReleased(w4.BUTTON_RIGHT)) {
-                sound_vol = std.math.clamp(sound_vol + 0.2, 0, 1);
-                sound(toneFreq(40, 200), 10, sound_vol, w4.TONE_PULSE1);
-                save();
-            }
-            w4.DRAW_COLORS.* = 0x33;
-            w4.oval(41, 42, 77, 79);
-            w4.DRAW_COLORS.* = 1;
-            w4.rect(40, 80, 80, 50);
-            w4.DRAW_COLORS.* = 0x33;
-            w4.oval(41, 66, 77, 27);
-            w4.DRAW_COLORS.* = 4;
-            w4.text("ONE SLIME ARMY", 24, 20);
-            w4.DRAW_COLORS.* = 2;
-            w4.text("START", 84, 105);
-            w4.DRAW_COLORS.* = 3;
-            w4.text("\x81\x80", 60, 105);
-            w4.text("HISCORE", 20, 120);
-            w4.text("VOLUME \x84     \x85", 28, 135);
-            w4.rect(92, 135, 39, 7);
-            w4.DRAW_COLORS.* = 2;
-            drawInt(hiscore, 84, 120, 9);
-            w4.rect(93, 136, round(u32, sound_vol * 37), 5);
+            updateTitle();
         },
         .gameover => {
-            gamepad1.update();
-            if (gamepad1.isReleased(w4.BUTTON_1) or gamepad1.isReleased(w4.BUTTON_2)) {
-                scene = .title;
-                sound(440, toneDur(0, 0, 0, 20), sound_vol, w4.TONE_TRIANGLE);
-            }
-            if (kills > hiscore) {
-                hiscore = kills;
-                save();
-            }
-            w4.DRAW_COLORS.* = 4;
-            w4.text("GAME OVER", 44, 45);
-            w4.DRAW_COLORS.* = 3;
-            w4.text("WAVE", 44, 75);
-            w4.text("KILLS", 36, 95);
-            w4.text("TIME", 44, 115);
-            w4.DRAW_COLORS.* = 2;
-            drawInt(wave, 84, 75, 9);
-            drawInt(kills, 84, 95, 9);
-            drawInt((end_frame - start_frame) / 60, 84, 115, 9);
+            updateGameover();
         },
     }
+}
+
+fn updateGame() void {
+    // player
+    gamepad1.update();
+    if (player1.alive) {
+        player1.update(gamepad1);
+        player1.draw();
+    }
+    // enemies
+    var wave_clear = true;
+    Spider.closest = -1;
+    for (Spider.buffer.slice()) |*spider| {
+        if (spider.alive) {
+            wave_clear = false;
+            spider.update(&player1);
+            spider.draw();
+        }
+    }
+    if (Spider.closest >= 0 and Spider.closest < 100 and frame_count % 10 == 0) {
+        sound(60, toneDur(5, 0, 0, 5), sound_vol * (100 - Spider.closest) / 100, w4.TONE_PULSE2);
+    }
+    for (Cannon.buffer.slice()) |*cannon| {
+        if (cannon.alive) {
+            wave_clear = false;
+            cannon.update(&player1);
+            cannon.draw();
+        }
+    }
+    if (wave_clear) {
+        wave += 1;
+        const num_cannons = std.math.min(wave / 3, Cannon.buffer.capacity());
+        const num_spiders = std.math.min(wave - num_cannons, Spider.buffer.capacity());
+        {
+            Spider.buffer.len = 0;
+            var id: usize = 0;
+            while (id < num_spiders) {
+                Spider.buffer.appendAssumeCapacity(Spider.init(id));
+                id += 1;
+            }
+        }
+        {
+            Cannon.buffer.len = 0;
+            var id: usize = 0;
+            while (id < num_cannons) {
+                Cannon.buffer.appendAssumeCapacity(Cannon.init(id));
+                id += 1;
+            }
+        }
+    }
+    for (Projectile.buffer.slice()) |*projectile| {
+        if (projectile.alive) {
+            projectile.update(&player1);
+            projectile.draw();
+        }
+    }
+    // effects
+    for (Explosion.buffer.slice()) |*explosion| {
+        if (explosion.alive) {
+            explosion.update();
+            explosion.draw();
+        }
+    }
+    if (!player1.alive and frame_count - end_frame > 120) {
+        scene = .gameover;
+    }
+}
+
+fn updateTitle() void {
+    gamepad1.update();
+    if (gamepad1.isReleased(w4.BUTTON_1) or gamepad1.isReleased(w4.BUTTON_2)) {
+        startGame();
+        sound(440, toneDur(0, 0, 0, 20), sound_vol, w4.TONE_TRIANGLE);
+    }
+    if (gamepad1.isReleased(w4.BUTTON_LEFT)) {
+        sound_vol = std.math.clamp(sound_vol - 0.2, 0, 1);
+        sound(toneFreq(200, 40), 10, sound_vol, w4.TONE_PULSE1);
+        save();
+    }
+    if (gamepad1.isReleased(w4.BUTTON_RIGHT)) {
+        sound_vol = std.math.clamp(sound_vol + 0.2, 0, 1);
+        sound(toneFreq(40, 200), 10, sound_vol, w4.TONE_PULSE1);
+        save();
+    }
+    w4.DRAW_COLORS.* = 0x33;
+    w4.oval(41, 42, 77, 79);
+    w4.DRAW_COLORS.* = 1;
+    w4.rect(40, 80, 80, 50);
+    w4.DRAW_COLORS.* = 0x33;
+    w4.oval(41, 66, 77, 27);
+    w4.DRAW_COLORS.* = 4;
+    w4.text("ONE SLIME ARMY", 24, 20);
+    w4.DRAW_COLORS.* = 2;
+    w4.text("START", 84, 105);
+    w4.DRAW_COLORS.* = 3;
+    w4.text("\x81\x80", 60, 105);
+    w4.text("HISCORE", 20, 120);
+    w4.text("VOLUME \x84     \x85", 28, 135);
+    w4.rect(92, 135, 39, 7);
+    w4.DRAW_COLORS.* = 2;
+    drawInt(hiscore, 84, 120, 9);
+    w4.rect(93, 136, round(u32, sound_vol * 37), 5);
+}
+
+fn updateGameover() void {
+    gamepad1.update();
+    if (gamepad1.isReleased(w4.BUTTON_1) or gamepad1.isReleased(w4.BUTTON_2)) {
+        scene = .title;
+        sound(440, toneDur(0, 0, 0, 20), sound_vol, w4.TONE_TRIANGLE);
+    }
+    if (kills > hiscore) {
+        hiscore = kills;
+        save();
+    }
+    w4.DRAW_COLORS.* = 4;
+    w4.text("GAME OVER", 44, 45);
+    w4.DRAW_COLORS.* = 3;
+    w4.text("WAVE", 44, 75);
+    w4.text("KILLS", 36, 95);
+    w4.text("TIME", 44, 115);
+    w4.DRAW_COLORS.* = 2;
+    drawInt(wave, 84, 75, 9);
+    drawInt(kills, 84, 95, 9);
+    drawInt((end_frame - start_frame) / 60, 84, 115, 9);
 }
 
 fn save() void {
