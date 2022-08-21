@@ -6,6 +6,7 @@ An arcade endless wave survival game for the [WASM-4](https://wasm4.org) fantasy
 ![](img/screenshot-1.png)
 ![](img/screenshot-2.png)
 ![](img/screenshot-3.png)
+![](img/screenshot-4.png)
 
 Battle hordes of enemies as a humble slime equipped with his trusty sword and shield.
 

@@ -182,13 +182,13 @@ const Spider = struct {
     var closest: f64 = -1;
 
     fn init(id: usize) @This() {
-        const x = rng.float(f64) * 100;
-        const y = rng.float(f64) * 100;
+        const x = rng.float(f64) * 100 - 50;
+        const y = rng.float(f64) * 100 - 50;
         return .{
             .id = id,
             .pos = .{
-                .x = if (x < 50) -50 - x else screen_size + 50 + (x - 50),
-                .y = if (y < 50) -50 - y else screen_size + 50 + (y - 50),
+                .x = if (x < 0) -50 + x else screen_size + 50 + x,
+                .y = if (y < 0) -50 + y else screen_size + 50 + y,
             },
             .target_offset = .{
                 .x = rng.float(f64) * 1.2 - 0.6,
@@ -282,13 +282,13 @@ const Cannon = struct {
     var buffer = std.BoundedArray(@This(), 20).init(0) catch unreachable;
 
     fn init(id: usize) @This() {
-        const x = rng.float(f64) * 100;
-        const y = rng.float(f64) * 100;
+        const x = rng.float(f64) * 100 - 50;
+        const y = rng.float(f64) * 100 - 50;
         return .{
             .id = id,
             .pos = .{
-                .x = if (x < 50) -10 - x else screen_size + 10 + (x - 50),
-                .y = if (y < 50) -10 - y else screen_size + 10 + (y - 50),
+                .x = if (x < 0) -10 + x else screen_size + 10 + x,
+                .y = if (y < 0) -10 + y else screen_size + 10 + y,
             },
             .target_offset = .{
                 .x = rng.float(f64) * 1.2 - 0.6,
@@ -381,6 +381,122 @@ const Cannon = struct {
     }
 };
 
+const Snake = struct {
+    id: usize,
+    alive: bool = true,
+    pos: Vec(f64),
+    speed: Vec(f64) = .{},
+    dir: Vec(f64) = .{},
+    size: f64,
+
+    const speed_max = 2;
+    var buffer = std.BoundedArray(@This(), 50).init(0) catch unreachable;
+    var closest: f64 = -1;
+
+    fn init(id: usize) @This() {
+        const x = rng.float(f64) * 100 - 50;
+        const y = rng.float(f64) * 100 - 50;
+        const pos: Vec(f64) = blk: {
+            if (id > 0) {
+                const previous = buffer.get(id - 1);
+                break :blk previous.pos;
+            }
+            break :blk .{
+                .x = if (x < 0) -50 + x else screen_size + 50 + x,
+                .y = if (y < 0) -50 + y else screen_size + 50 + y,
+            };
+        };
+        return .{
+            .id = id,
+            .pos = pos,
+            .size = std.math.max(17 - @intToFloat(f64, id), 9),
+        };
+    }
+
+    fn update(self: *@This(), player: *Player) void {
+        // collision
+        var target = player.pos.subtract(self.pos);
+        const distance = target.length();
+        if (closest < 0 or distance < closest) closest = distance;
+        const radius = self.size / 2;
+        if (player.collideAttack(self.pos, radius)) {
+            self.kill();
+        } else if (player.collideBlock(self.pos, radius)) {
+            const bump = std.math.max(11 - distance, 1.5);
+            self.pos.x += player.look_dir.x * bump;
+            self.pos.y += player.look_dir.y * bump;
+            self.speed.reflect(player.look_dir);
+            sound(500, toneDur(0, 0, 0, 3), sound_vol * 0.3, w4.TONE_NOISE);
+        } else if (player.collideBody(self.pos, radius)) {
+            player.kill();
+        }
+        // movement
+        var move_target = target;
+        var accel: f64 = std.math.max((100 - distance) * 0.003, 0.05);
+        if (self.id > 0) {
+            const previous = buffer.get(self.id - 1);
+            if (previous.alive) {
+                move_target = previous.pos.subtract(self.pos);
+                const dist = move_target.length();
+                accel = dist * dist * 0.025;
+            }
+        }
+        move_target.normalize();
+        self.speed.x += move_target.x * accel;
+        self.speed.y += move_target.y * accel;
+        if (self.speed.x != 0 or self.speed.y != 0) {
+            self.dir = self.speed;
+            self.dir.normalize();
+            if (self.speed.length() > speed_max) {
+                self.speed.x = self.dir.x * speed_max;
+                self.speed.y = self.dir.y * speed_max;
+            }
+        }
+        self.pos.x += self.speed.x;
+        self.pos.y += self.speed.y;
+    }
+
+    fn draw(self: @This()) void {
+        const x: i32 = round(i32, self.pos.x);
+        const y: i32 = round(i32, self.pos.y);
+        const flip: f64 = if ((frame_count / 5 + self.id) % 2 == 0) 1 else -1;
+        w4.DRAW_COLORS.* = 4;
+        w4.line(
+            x + round(i32, (self.dir.x * (2.5 + flip) * 0.1 + self.dir.y * 0.8) * self.size),
+            y + round(i32, (self.dir.y * (2.5 + flip) * 0.1 - self.dir.x * 0.8) * self.size),
+            x - round(i32, (self.dir.x * (2.5 + flip) * 0.1 + self.dir.y * 0.8) * self.size),
+            y - round(i32, (self.dir.y * (2.5 + flip) * 0.1 - self.dir.x * 0.8) * self.size),
+        );
+        w4.line(
+            x + round(i32, (self.dir.x * (2.5 - flip) * 0.1 - self.dir.y * 0.8) * self.size),
+            y + round(i32, (self.dir.y * (2.5 - flip) * 0.1 + self.dir.x * 0.8) * self.size),
+            x - round(i32, (self.dir.x * (2.5 - flip) * 0.1 - self.dir.y * 0.8) * self.size),
+            y - round(i32, (self.dir.y * (2.5 - flip) * 0.1 + self.dir.x * 0.8) * self.size),
+        );
+        w4.line(
+            x + round(i32, (self.dir.x * 0.50 - self.dir.y * 0.1) * self.size),
+            y + round(i32, (self.dir.y * 0.50 + self.dir.x * 0.1) * self.size),
+            x + round(i32, (self.dir.x * 0.65 - self.dir.y * 0.2) * self.size),
+            y + round(i32, (self.dir.y * 0.65 + self.dir.x * 0.2) * self.size),
+        );
+        w4.line(
+            x + round(i32, (self.dir.x * 0.50 + self.dir.y * 0.1) * self.size),
+            y + round(i32, (self.dir.y * 0.50 - self.dir.x * 0.1) * self.size),
+            x + round(i32, (self.dir.x * 0.65 + self.dir.y * 0.2) * self.size),
+            y + round(i32, (self.dir.y * 0.65 - self.dir.x * 0.2) * self.size),
+        );
+        w4.DRAW_COLORS.* = 0x41;
+        drawCircle(x, y, round(i32, self.size));
+    }
+
+    fn kill(self: *@This()) void {
+        self.alive = false;
+        kills += 1;
+        (Explosion{ .pos = self.pos.toInt(i32), .duration = 9 }).spawn();
+        sound(toneFreq(170, 40), toneDur(0, 0, 0, 25), sound_vol, w4.TONE_NOISE);
+    }
+};
+
 const Projectile = struct {
     alive: bool = true,
     pos: Vec(f64),
@@ -422,6 +538,11 @@ const Projectile = struct {
             for (Cannon.buffer.slice()) |*cannon| {
                 if (cannon.alive and self.pos.distance(cannon.pos) < 6) {
                     cannon.kill();
+                }
+            }
+            for (Snake.buffer.slice()) |*snake| {
+                if (snake.alive and self.pos.distance(snake.pos) < snake.size / 2) {
+                    snake.kill();
                 }
             }
         }
@@ -551,6 +672,7 @@ fn startGame() void {
     player1 = Player{};
     Spider.buffer.len = 0;
     Cannon.buffer.len = 0;
+    Snake.buffer.len = 0;
     Projectile.buffer.len = 0;
     Projectile.index = 0;
     Explosion.buffer.len = 0;
@@ -580,6 +702,9 @@ fn updateGame() void {
         player1.update(gamepad1);
         player1.draw();
     }
+    if (!player1.alive and frame_count - end_frame > 120) {
+        scene = .gameover;
+    }
     // enemies
     var wave_clear = true;
     Spider.closest = -1;
@@ -600,26 +725,21 @@ fn updateGame() void {
             cannon.draw();
         }
     }
-    if (wave_clear) {
-        wave += 1;
-        const num_cannons = std.math.min(wave / 3, Cannon.buffer.capacity());
-        const num_spiders = std.math.min(wave - num_cannons, Spider.buffer.capacity());
-        {
-            Spider.buffer.len = 0;
-            var id: usize = 0;
-            while (id < num_spiders) {
-                Spider.buffer.appendAssumeCapacity(Spider.init(id));
-                id += 1;
+    Snake.closest = -1;
+    {
+        var i = Snake.buffer.len;
+        while (i > 0) {
+            i -= 1;
+            var snake = &Snake.buffer.buffer[i];
+            if (snake.alive) {
+                wave_clear = false;
+                snake.update(&player1);
+                snake.draw();
             }
         }
-        {
-            Cannon.buffer.len = 0;
-            var id: usize = 0;
-            while (id < num_cannons) {
-                Cannon.buffer.appendAssumeCapacity(Cannon.init(id));
-                id += 1;
-            }
-        }
+    }
+    if (Snake.closest >= 0 and Snake.closest < 200 and frame_count % 12 == 0) {
+        sound(toneFreq(90, 60), toneDur(5, 0, 0, 5), sound_vol * (200 - Snake.closest) / 200, w4.TONE_PULSE2 | w4.TONE_MODE3);
     }
     for (Projectile.buffer.slice()) |*projectile| {
         if (projectile.alive) {
@@ -634,8 +754,43 @@ fn updateGame() void {
             explosion.draw();
         }
     }
-    if (!player1.alive and frame_count - end_frame > 120) {
-        scene = .gameover;
+    // spawn wave
+    if (wave_clear) {
+        wave += 1;
+        const boss = wave % 10 == 0;
+        const num_snake = std.math.min(
+            if (boss) wave else 0,
+            Snake.buffer.capacity(),
+        );
+        const num_cannons = std.math.min(
+            (if (boss) (wave -| 10) / 4 else wave) / 3,
+            Cannon.buffer.capacity(),
+        );
+        const num_spiders = std.math.min(
+            (if (boss) (wave -| 10) / 4 else wave) -| num_cannons,
+            Spider.buffer.capacity(),
+        );
+        {
+            Spider.buffer.len = 0;
+            var id: usize = 0;
+            while (id < num_spiders) : (id += 1) {
+                Spider.buffer.appendAssumeCapacity(Spider.init(id));
+            }
+        }
+        {
+            Cannon.buffer.len = 0;
+            var id: usize = 0;
+            while (id < num_cannons) : (id += 1) {
+                Cannon.buffer.appendAssumeCapacity(Cannon.init(id));
+            }
+        }
+        {
+            Snake.buffer.len = 0;
+            var id: usize = 0;
+            while (id < num_snake) : (id += 1) {
+                Snake.buffer.appendAssumeCapacity(Snake.init(id));
+            }
+        }
     }
 }
 
