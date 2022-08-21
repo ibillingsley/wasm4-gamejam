@@ -3,15 +3,16 @@
 An arcade endless wave survival game for the [WASM-4](https://wasm4.org) fantasy console,
 [Game Jam #2](https://itch.io/jam/wasm4-v2), written in [Zig](https://ziglang.org/) version 0.9.1
 
-![](img/screenshot-1.png)
-![](img/screenshot-2.png)
-![](img/screenshot-3.png)
-![](img/screenshot-4.png)
+![](img/screenshot-1x2.png)
+![](img/screenshot-2x2.png)
+![](img/screenshot-3x2.png)
+![](img/screenshot-4x2.png)
 
 Battle hordes of enemies as a humble slime equipped with his trusty sword and shield.
 
 | Controls    |                       |
 | ----------- | --------------------- |
+| Arrow keys  | Move                  |
 | Z (hold)    | Block, Lock direction |
 | Z (release) | Attack                |
 | X           | Dash                  |
