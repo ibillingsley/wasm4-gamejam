@@ -272,6 +272,7 @@ const Spider = struct {
 
     fn kill(self: *@This()) void {
         self.alive = false;
+        kills += 1;
         (Explosion{ .pos = self.pos.toInt(i32), .duration = 7 }).show();
         sound(toneFreq(200, 60), toneDur(0, 0, 0, 20), sound_vol, w4.TONE_NOISE);
     }
@@ -339,6 +340,8 @@ var start_frame: u32 = 0;
 var end_frame: u32 = 0;
 var sound_vol: f64 = 0.6;
 var wave: u32 = 0;
+var kills: u32 = 0;
+var hiscore: u32 = 0;
 var prng = std.rand.DefaultPrng.init(0);
 var rng: std.rand.Random = undefined;
 var gamepad1 = Gamepad{ .ptr = w4.GAMEPAD1 };
@@ -354,6 +357,7 @@ const palette: [4]u32 = .{
 export fn start() void {
     w4.PALETTE.* = palette;
     rng = prng.random();
+    load();
 }
 
 export fn update() void {
@@ -401,46 +405,83 @@ export fn update() void {
         },
         .title => {
             gamepad1.update();
-            if (gamepad1.isPressed(w4.BUTTON_1) or gamepad1.isPressed(w4.BUTTON_2)) {
+            if (gamepad1.isReleased(w4.BUTTON_1) or gamepad1.isReleased(w4.BUTTON_2)) {
                 prng.seed(frame_count);
                 start_frame = frame_count;
                 wave = 0;
+                kills = 0;
                 scene = .game;
                 player1 = Player{};
                 Spider.buffer.len = 0;
+                sound(440, toneDur(0, 0, 0, 20), sound_vol, w4.TONE_TRIANGLE);
             }
-            if (gamepad1.isPressed(w4.BUTTON_LEFT)) {
+            if (gamepad1.isReleased(w4.BUTTON_LEFT)) {
                 sound_vol = std.math.clamp(sound_vol - 0.2, 0, 1);
                 sound(toneFreq(200, 40), 10, sound_vol, w4.TONE_PULSE1);
+                save();
             }
-            if (gamepad1.isPressed(w4.BUTTON_RIGHT)) {
+            if (gamepad1.isReleased(w4.BUTTON_RIGHT)) {
                 sound_vol = std.math.clamp(sound_vol + 0.2, 0, 1);
                 sound(toneFreq(40, 200), 10, sound_vol, w4.TONE_PULSE1);
+                save();
             }
+            w4.DRAW_COLORS.* = 0x33;
+            w4.oval(41, 42, 77, 79);
+            w4.DRAW_COLORS.* = 1;
+            w4.rect(40, 80, 80, 50);
+            w4.DRAW_COLORS.* = 0x33;
+            w4.oval(41, 66, 77, 27);
             w4.DRAW_COLORS.* = 4;
-            w4.text("UNTITLED GAME", 28, 30);
+            w4.text("ONE SLIME ARMY", 24, 20);
             w4.DRAW_COLORS.* = 2;
-            w4.text("\x80\x81 START", 48, 110);
+            w4.text("START", 84, 105);
             w4.DRAW_COLORS.* = 3;
-            w4.text("VOLUME \x84       \x85", 16, 140);
-            w4.rect(80, 140, 55, 7);
+            w4.text("\x81\x80", 60, 105);
+            w4.text("HISCORE", 20, 120);
+            w4.text("VOLUME \x84     \x85", 28, 135);
+            w4.rect(92, 135, 39, 7);
             w4.DRAW_COLORS.* = 2;
-            w4.rect(81, 141, round(u32, sound_vol * 53), 5);
+            drawInt(hiscore, 84, 120, 9);
+            w4.rect(93, 136, round(u32, sound_vol * 37), 5);
         },
         .gameover => {
             gamepad1.update();
-            if (gamepad1.isPressed(w4.BUTTON_1) or gamepad1.isPressed(w4.BUTTON_2)) {
+            if (gamepad1.isReleased(w4.BUTTON_1) or gamepad1.isReleased(w4.BUTTON_2)) {
                 scene = .title;
+                sound(440, toneDur(0, 0, 0, 20), sound_vol, w4.TONE_TRIANGLE);
+            }
+            if (kills > hiscore) {
+                hiscore = kills;
+                save();
             }
             w4.DRAW_COLORS.* = 4;
-            w4.text("GAME OVER", 44, 50);
-            w4.DRAW_COLORS.* = 2;
-            w4.text("WAVE", 44, 80);
-            drawInt(wave, 84, 80, 9);
+            w4.text("GAME OVER", 44, 45);
             w4.DRAW_COLORS.* = 3;
-            w4.text("TIME", 44, 100);
-            drawInt((end_frame - start_frame) / 60, 84, 100, 9);
+            w4.text("WAVE", 44, 75);
+            w4.text("KILLS", 36, 95);
+            w4.text("TIME", 44, 115);
+            w4.DRAW_COLORS.* = 2;
+            drawInt(wave, 84, 75, 9);
+            drawInt(kills, 84, 95, 9);
+            drawInt((end_frame - start_frame) / 60, 84, 115, 9);
         },
+    }
+}
+
+fn save() void {
+    var data: [2]u32 = .{
+        round(u32, sound_vol * 100),
+        hiscore,
+    };
+    _ = w4.diskw(@ptrCast([*]u8, &data), @sizeOf(@TypeOf(data)));
+}
+
+fn load() void {
+    var data: [2]u32 = .{ 0, 0 };
+    const bytes = w4.diskr(@ptrCast([*]u8, &data), @sizeOf(@TypeOf(data)));
+    if (bytes > 0) {
+        sound_vol = @intToFloat(f64, data[0]) / 100;
+        hiscore = data[1];
     }
 }
 

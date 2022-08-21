@@ -1,6 +1,15 @@
-# gamejam-wasm4-2
+# One Slime Army
 
-A game written in Zig for the [WASM-4](https://wasm4.org) fantasy console.
+An arcade endless wave survival game for the [WASM-4](https://wasm4.org) fantasy console,
+[Game Jam #2](https://itch.io/jam/wasm4-v2), written in [Zig](https://ziglang.org/) version 0.9.1
+
+Battle hordes of enemies as a humble slime equipped with his trusty sword and shield.
+
+| Controls    |        |
+| ----------- | ------ |
+| Z (hold)    | Block  |
+| Z (release) | Attack |
+| X           | Dash   |
 
 ## Building
 
