@@ -237,19 +237,19 @@ const Spider = struct {
         const y = self.pos.y;
         const flip: f64 = if ((frame_count / 5 + self.id) % 2 == 0) 1 else -1;
         w4.DRAW_COLORS.* = 4;
-        w4.line(
-            round(i32, x + self.dir.x * (2 + flip) + self.dir.y * 4),
-            round(i32, y + self.dir.y * (2 + flip) - self.dir.x * 4),
-            round(i32, x - self.dir.x * (2 + flip) - self.dir.y * 4),
-            round(i32, y - self.dir.y * (2 + flip) + self.dir.x * 4),
+        drawLineF(
+            x + self.dir.x * (2 + flip) + self.dir.y * 4,
+            y + self.dir.y * (2 + flip) - self.dir.x * 4,
+            x - self.dir.x * (2 + flip) - self.dir.y * 4,
+            y - self.dir.y * (2 + flip) + self.dir.x * 4,
         );
-        w4.line(
-            round(i32, x + self.dir.x * (2 - flip) - self.dir.y * 4),
-            round(i32, y + self.dir.y * (2 - flip) + self.dir.x * 4),
-            round(i32, x - self.dir.x * (2 - flip) + self.dir.y * 4),
-            round(i32, y - self.dir.y * (2 - flip) - self.dir.x * 4),
+        drawLineF(
+            x + self.dir.x * (2 - flip) - self.dir.y * 4,
+            y + self.dir.y * (2 - flip) + self.dir.x * 4,
+            x - self.dir.x * (2 - flip) + self.dir.y * 4,
+            y - self.dir.y * (2 - flip) - self.dir.x * 4,
         );
-        drawCircle(round(i32, x), round(i32, y), 5);
+        drawCircleF(x, y, 5);
         drawPixel(
             round(i32, x + self.dir.x * 4 + self.dir.y * 1.5),
             round(i32, y + self.dir.y * 4 - self.dir.x * 1.5),
@@ -350,26 +350,26 @@ const Cannon = struct {
         const x = self.pos.x;
         const y = self.pos.y;
         w4.DRAW_COLORS.* = 0x33;
-        drawCircle(round(i32, x + self.dir.y * 4), round(i32, y - self.dir.x * 4), 3);
-        drawCircle(round(i32, x - self.dir.y * 4), round(i32, y + self.dir.x * 4), 3);
+        drawCircleF(x + self.dir.y * 4, y - self.dir.x * 4, 3);
+        drawCircleF(x - self.dir.y * 4, y + self.dir.x * 4, 3);
         w4.DRAW_COLORS.* = 4;
-        w4.line(
-            round(i32, x - self.look_dir.x * 3.5),
-            round(i32, y - self.look_dir.y * 3.5),
-            round(i32, x + self.look_dir.x * 4),
-            round(i32, y + self.look_dir.y * 4),
+        drawLineF(
+            x - self.look_dir.x * 3.5,
+            y - self.look_dir.y * 3.5,
+            x + self.look_dir.x * 4,
+            y + self.look_dir.y * 4,
         );
-        w4.line(
-            round(i32, x - self.look_dir.x * 3 - self.look_dir.y * 0.5),
-            round(i32, y - self.look_dir.y * 3 + self.look_dir.x * 0.5),
-            round(i32, x + self.look_dir.x * 5 - self.look_dir.y * 0.5),
-            round(i32, y + self.look_dir.y * 5 + self.look_dir.x * 0.5),
+        drawLineF(
+            x - self.look_dir.x * 3 - self.look_dir.y * 0.5,
+            y - self.look_dir.y * 3 + self.look_dir.x * 0.5,
+            x + self.look_dir.x * 5 - self.look_dir.y * 0.5,
+            y + self.look_dir.y * 5 + self.look_dir.x * 0.5,
         );
-        w4.line(
-            round(i32, x - self.look_dir.x * 3 + self.look_dir.y * 0.5),
-            round(i32, y - self.look_dir.y * 3 - self.look_dir.x * 0.5),
-            round(i32, x + self.look_dir.x * 5 + self.look_dir.y * 0.5),
-            round(i32, y + self.look_dir.y * 5 - self.look_dir.x * 0.5),
+        drawLineF(
+            x - self.look_dir.x * 3 + self.look_dir.y * 0.5,
+            y - self.look_dir.y * 3 - self.look_dir.x * 0.5,
+            x + self.look_dir.x * 5 + self.look_dir.y * 0.5,
+            y + self.look_dir.y * 5 - self.look_dir.x * 0.5,
         );
     }
 
@@ -394,13 +394,13 @@ const Snake = struct {
     var closest: f64 = -1;
 
     fn init(id: usize) @This() {
-        const x = rng.float(f64) * 100 - 50;
-        const y = rng.float(f64) * 100 - 50;
         const pos: Vec(f64) = blk: {
             if (id > 0) {
                 const previous = buffer.get(id - 1);
                 break :blk previous.pos;
             }
+            const x = rng.float(f64) * 100 - 50;
+            const y = rng.float(f64) * 100 - 50;
             break :blk .{
                 .x = if (x < 0) -50 + x else screen_size + 50 + x,
                 .y = if (y < 0) -50 + y else screen_size + 50 + y,
@@ -461,32 +461,32 @@ const Snake = struct {
         const y = self.pos.y;
         const flip: f64 = if ((frame_count / 5 + self.id) % 2 == 0) 1 else -1;
         w4.DRAW_COLORS.* = 4;
-        w4.line(
-            round(i32, x + (self.dir.x * (2.5 + flip) * 0.1 + self.dir.y * 0.8) * self.size),
-            round(i32, y + (self.dir.y * (2.5 + flip) * 0.1 - self.dir.x * 0.8) * self.size),
-            round(i32, x - (self.dir.x * (2.5 + flip) * 0.1 + self.dir.y * 0.8) * self.size),
-            round(i32, y - (self.dir.y * (2.5 + flip) * 0.1 - self.dir.x * 0.8) * self.size),
+        drawLineF(
+            x + (self.dir.x * (2.5 + flip) * 0.1 + self.dir.y * 0.8) * self.size,
+            y + (self.dir.y * (2.5 + flip) * 0.1 - self.dir.x * 0.8) * self.size,
+            x - (self.dir.x * (2.5 + flip) * 0.1 + self.dir.y * 0.8) * self.size,
+            y - (self.dir.y * (2.5 + flip) * 0.1 - self.dir.x * 0.8) * self.size,
         );
-        w4.line(
-            round(i32, x + (self.dir.x * (2.5 - flip) * 0.1 - self.dir.y * 0.8) * self.size),
-            round(i32, y + (self.dir.y * (2.5 - flip) * 0.1 + self.dir.x * 0.8) * self.size),
-            round(i32, x - (self.dir.x * (2.5 - flip) * 0.1 - self.dir.y * 0.8) * self.size),
-            round(i32, y - (self.dir.y * (2.5 - flip) * 0.1 + self.dir.x * 0.8) * self.size),
+        drawLineF(
+            x + (self.dir.x * (2.5 - flip) * 0.1 - self.dir.y * 0.8) * self.size,
+            y + (self.dir.y * (2.5 - flip) * 0.1 + self.dir.x * 0.8) * self.size,
+            x - (self.dir.x * (2.5 - flip) * 0.1 - self.dir.y * 0.8) * self.size,
+            y - (self.dir.y * (2.5 - flip) * 0.1 + self.dir.x * 0.8) * self.size,
         );
-        w4.line(
-            round(i32, x + (self.dir.x * 0.50 - self.dir.y * 0.1) * self.size),
-            round(i32, y + (self.dir.y * 0.50 + self.dir.x * 0.1) * self.size),
-            round(i32, x + (self.dir.x * 0.65 - self.dir.y * 0.2) * self.size),
-            round(i32, y + (self.dir.y * 0.65 + self.dir.x * 0.2) * self.size),
+        drawLineF(
+            x + (self.dir.x * 0.50 - self.dir.y * 0.1) * self.size,
+            y + (self.dir.y * 0.50 + self.dir.x * 0.1) * self.size,
+            x + (self.dir.x * 0.65 - self.dir.y * 0.2) * self.size,
+            y + (self.dir.y * 0.65 + self.dir.x * 0.2) * self.size,
         );
-        w4.line(
-            round(i32, x + (self.dir.x * 0.50 + self.dir.y * 0.1) * self.size),
-            round(i32, y + (self.dir.y * 0.50 - self.dir.x * 0.1) * self.size),
-            round(i32, x + (self.dir.x * 0.65 + self.dir.y * 0.2) * self.size),
-            round(i32, y + (self.dir.y * 0.65 - self.dir.x * 0.2) * self.size),
+        drawLineF(
+            x + (self.dir.x * 0.50 + self.dir.y * 0.1) * self.size,
+            y + (self.dir.y * 0.50 - self.dir.x * 0.1) * self.size,
+            x + (self.dir.x * 0.65 + self.dir.y * 0.2) * self.size,
+            y + (self.dir.y * 0.65 - self.dir.x * 0.2) * self.size,
         );
         w4.DRAW_COLORS.* = 0x41;
-        drawCircle(round(i32, x), round(i32, y), round(i32, self.size));
+        drawCircleF(x, y, self.size);
     }
 
     fn kill(self: *@This()) void {
@@ -555,7 +555,7 @@ const Projectile = struct {
         const x = self.pos.x;
         const y = self.pos.y;
         w4.DRAW_COLORS.* = if (self.hostile) 0x22 else 0x21;
-        drawCircle(round(i32, x), round(i32, y), 3);
+        drawCircleF(x, y, 3);
     }
 };
 
@@ -642,7 +642,7 @@ var scene: Scene = .title;
 var frame_count: u32 = 0;
 var start_frame: u32 = 0;
 var end_frame: u32 = 0;
-var sound_vol: f64 = 0.6;
+var sound_vol: f64 = 0.8;
 var wave: u32 = 0;
 var kills: u32 = 0;
 var hiscore: u32 = 0;
@@ -867,6 +867,15 @@ fn drawPixel(x: i32, y: i32) void {
 
 fn drawCircle(x: i32, y: i32, size: i32) void {
     w4.oval(x - @divFloor(size, 2), y - @divFloor(size, 2), size, size);
+}
+
+fn drawCircleF(x: f64, y: f64, size: f64) void {
+    const s = round(i32, size);
+    w4.oval(round(i32, x - (size / 2)), round(i32, y - (size / 2)), s, s);
+}
+
+fn drawLineF(x1: f64, y1: f64, x2: f64, y2: f64) void {
+    w4.line(round(i32, x1), round(i32, y1), round(i32, x2), round(i32, y2));
 }
 
 fn drawInt(value: anytype, x: i32, y: i32, len: comptime_int) void {
