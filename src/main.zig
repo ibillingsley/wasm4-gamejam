@@ -233,30 +233,30 @@ const Spider = struct {
     }
 
     fn draw(self: @This()) void {
-        const x: i32 = round(i32, self.pos.x);
-        const y: i32 = round(i32, self.pos.y);
+        const x = self.pos.x;
+        const y = self.pos.y;
         const flip: f64 = if ((frame_count / 5 + self.id) % 2 == 0) 1 else -1;
         w4.DRAW_COLORS.* = 4;
         w4.line(
-            x + round(i32, self.dir.x * (2 + flip) + self.dir.y * 4),
-            y + round(i32, self.dir.y * (2 + flip) - self.dir.x * 4),
-            x - round(i32, self.dir.x * (2 + flip) + self.dir.y * 4),
-            y - round(i32, self.dir.y * (2 + flip) - self.dir.x * 4),
+            round(i32, x + self.dir.x * (2 + flip) + self.dir.y * 4),
+            round(i32, y + self.dir.y * (2 + flip) - self.dir.x * 4),
+            round(i32, x - self.dir.x * (2 + flip) - self.dir.y * 4),
+            round(i32, y - self.dir.y * (2 + flip) + self.dir.x * 4),
         );
         w4.line(
-            x + round(i32, self.dir.x * (2 - flip) - self.dir.y * 4),
-            y + round(i32, self.dir.y * (2 - flip) + self.dir.x * 4),
-            x - round(i32, self.dir.x * (2 - flip) - self.dir.y * 4),
-            y - round(i32, self.dir.y * (2 - flip) + self.dir.x * 4),
+            round(i32, x + self.dir.x * (2 - flip) - self.dir.y * 4),
+            round(i32, y + self.dir.y * (2 - flip) + self.dir.x * 4),
+            round(i32, x - self.dir.x * (2 - flip) + self.dir.y * 4),
+            round(i32, y - self.dir.y * (2 - flip) - self.dir.x * 4),
         );
-        drawCircle(x, y, 5);
+        drawCircle(round(i32, x), round(i32, y), 5);
         drawPixel(
-            x + round(i32, self.dir.x * 4 + self.dir.y * 1.5),
-            y + round(i32, self.dir.y * 4 - self.dir.x * 1.5),
+            round(i32, x + self.dir.x * 4 + self.dir.y * 1.5),
+            round(i32, y + self.dir.y * 4 - self.dir.x * 1.5),
         );
         drawPixel(
-            x + round(i32, self.dir.x * 4 - self.dir.y * 1.5),
-            y + round(i32, self.dir.y * 4 + self.dir.x * 1.5),
+            round(i32, x + self.dir.x * 4 - self.dir.y * 1.5),
+            round(i32, y + self.dir.y * 4 + self.dir.x * 1.5),
         );
     }
 
@@ -347,29 +347,29 @@ const Cannon = struct {
     }
 
     fn draw(self: @This()) void {
-        const x: i32 = round(i32, self.pos.x);
-        const y: i32 = round(i32, self.pos.y);
+        const x = self.pos.x;
+        const y = self.pos.y;
         w4.DRAW_COLORS.* = 0x33;
-        drawCircle(x + round(i32, self.dir.y * 4), y - round(i32, self.dir.x * 4), 3);
-        drawCircle(x - round(i32, self.dir.y * 4), y + round(i32, self.dir.x * 4), 3);
+        drawCircle(round(i32, x + self.dir.y * 4), round(i32, y - self.dir.x * 4), 3);
+        drawCircle(round(i32, x - self.dir.y * 4), round(i32, y + self.dir.x * 4), 3);
         w4.DRAW_COLORS.* = 4;
         w4.line(
-            x - round(i32, self.look_dir.x * 3.5),
-            y - round(i32, self.look_dir.y * 3.5),
-            x + round(i32, self.look_dir.x * 4),
-            y + round(i32, self.look_dir.y * 4),
+            round(i32, x - self.look_dir.x * 3.5),
+            round(i32, y - self.look_dir.y * 3.5),
+            round(i32, x + self.look_dir.x * 4),
+            round(i32, y + self.look_dir.y * 4),
         );
         w4.line(
-            x - round(i32, self.look_dir.x * 3 + self.look_dir.y * 0.5),
-            y - round(i32, self.look_dir.y * 3 - self.look_dir.x * 0.5),
-            x + round(i32, self.look_dir.x * 5 - self.look_dir.y * 0.5),
-            y + round(i32, self.look_dir.y * 5 + self.look_dir.x * 0.5),
+            round(i32, x - self.look_dir.x * 3 - self.look_dir.y * 0.5),
+            round(i32, y - self.look_dir.y * 3 + self.look_dir.x * 0.5),
+            round(i32, x + self.look_dir.x * 5 - self.look_dir.y * 0.5),
+            round(i32, y + self.look_dir.y * 5 + self.look_dir.x * 0.5),
         );
         w4.line(
-            x - round(i32, self.look_dir.x * 3 - self.look_dir.y * 0.5),
-            y - round(i32, self.look_dir.y * 3 + self.look_dir.x * 0.5),
-            x + round(i32, self.look_dir.x * 5 + self.look_dir.y * 0.5),
-            y + round(i32, self.look_dir.y * 5 - self.look_dir.x * 0.5),
+            round(i32, x - self.look_dir.x * 3 + self.look_dir.y * 0.5),
+            round(i32, y - self.look_dir.y * 3 - self.look_dir.x * 0.5),
+            round(i32, x + self.look_dir.x * 5 + self.look_dir.y * 0.5),
+            round(i32, y + self.look_dir.y * 5 - self.look_dir.x * 0.5),
         );
     }
 
@@ -457,36 +457,36 @@ const Snake = struct {
     }
 
     fn draw(self: @This()) void {
-        const x: i32 = round(i32, self.pos.x);
-        const y: i32 = round(i32, self.pos.y);
+        const x = self.pos.x;
+        const y = self.pos.y;
         const flip: f64 = if ((frame_count / 5 + self.id) % 2 == 0) 1 else -1;
         w4.DRAW_COLORS.* = 4;
         w4.line(
-            x + round(i32, (self.dir.x * (2.5 + flip) * 0.1 + self.dir.y * 0.8) * self.size),
-            y + round(i32, (self.dir.y * (2.5 + flip) * 0.1 - self.dir.x * 0.8) * self.size),
-            x - round(i32, (self.dir.x * (2.5 + flip) * 0.1 + self.dir.y * 0.8) * self.size),
-            y - round(i32, (self.dir.y * (2.5 + flip) * 0.1 - self.dir.x * 0.8) * self.size),
+            round(i32, x + (self.dir.x * (2.5 + flip) * 0.1 + self.dir.y * 0.8) * self.size),
+            round(i32, y + (self.dir.y * (2.5 + flip) * 0.1 - self.dir.x * 0.8) * self.size),
+            round(i32, x - (self.dir.x * (2.5 + flip) * 0.1 + self.dir.y * 0.8) * self.size),
+            round(i32, y - (self.dir.y * (2.5 + flip) * 0.1 - self.dir.x * 0.8) * self.size),
         );
         w4.line(
-            x + round(i32, (self.dir.x * (2.5 - flip) * 0.1 - self.dir.y * 0.8) * self.size),
-            y + round(i32, (self.dir.y * (2.5 - flip) * 0.1 + self.dir.x * 0.8) * self.size),
-            x - round(i32, (self.dir.x * (2.5 - flip) * 0.1 - self.dir.y * 0.8) * self.size),
-            y - round(i32, (self.dir.y * (2.5 - flip) * 0.1 + self.dir.x * 0.8) * self.size),
+            round(i32, x + (self.dir.x * (2.5 - flip) * 0.1 - self.dir.y * 0.8) * self.size),
+            round(i32, y + (self.dir.y * (2.5 - flip) * 0.1 + self.dir.x * 0.8) * self.size),
+            round(i32, x - (self.dir.x * (2.5 - flip) * 0.1 - self.dir.y * 0.8) * self.size),
+            round(i32, y - (self.dir.y * (2.5 - flip) * 0.1 + self.dir.x * 0.8) * self.size),
         );
         w4.line(
-            x + round(i32, (self.dir.x * 0.50 - self.dir.y * 0.1) * self.size),
-            y + round(i32, (self.dir.y * 0.50 + self.dir.x * 0.1) * self.size),
-            x + round(i32, (self.dir.x * 0.65 - self.dir.y * 0.2) * self.size),
-            y + round(i32, (self.dir.y * 0.65 + self.dir.x * 0.2) * self.size),
+            round(i32, x + (self.dir.x * 0.50 - self.dir.y * 0.1) * self.size),
+            round(i32, y + (self.dir.y * 0.50 + self.dir.x * 0.1) * self.size),
+            round(i32, x + (self.dir.x * 0.65 - self.dir.y * 0.2) * self.size),
+            round(i32, y + (self.dir.y * 0.65 + self.dir.x * 0.2) * self.size),
         );
         w4.line(
-            x + round(i32, (self.dir.x * 0.50 + self.dir.y * 0.1) * self.size),
-            y + round(i32, (self.dir.y * 0.50 - self.dir.x * 0.1) * self.size),
-            x + round(i32, (self.dir.x * 0.65 + self.dir.y * 0.2) * self.size),
-            y + round(i32, (self.dir.y * 0.65 - self.dir.x * 0.2) * self.size),
+            round(i32, x + (self.dir.x * 0.50 + self.dir.y * 0.1) * self.size),
+            round(i32, y + (self.dir.y * 0.50 - self.dir.x * 0.1) * self.size),
+            round(i32, x + (self.dir.x * 0.65 + self.dir.y * 0.2) * self.size),
+            round(i32, y + (self.dir.y * 0.65 - self.dir.x * 0.2) * self.size),
         );
         w4.DRAW_COLORS.* = 0x41;
-        drawCircle(x, y, round(i32, self.size));
+        drawCircle(round(i32, x), round(i32, y), round(i32, self.size));
     }
 
     fn kill(self: *@This()) void {
@@ -511,7 +511,7 @@ const Projectile = struct {
     fn spawn(self: @This()) void {
         if (buffer.len < buffer.capacity()) _ = buffer.addOneAssumeCapacity();
         buffer.set(index, self);
-        index = if (index < buffer.capacity() - 1) index + 1 else 0;
+        index = (index + 1) % buffer.capacity();
     }
 
     fn update(self: *@This(), player: *Player) void {
@@ -552,10 +552,10 @@ const Projectile = struct {
     }
 
     fn draw(self: @This()) void {
-        const x: i32 = round(i32, self.pos.x);
-        const y: i32 = round(i32, self.pos.y);
+        const x = self.pos.x;
+        const y = self.pos.y;
         w4.DRAW_COLORS.* = if (self.hostile) 0x22 else 0x21;
-        drawCircle(x, y, 3);
+        drawCircle(round(i32, x), round(i32, y), 3);
     }
 };
 
@@ -572,7 +572,7 @@ const Explosion = struct {
     fn spawn(self: @This()) void {
         if (buffer.len < buffer.capacity()) _ = buffer.addOneAssumeCapacity();
         buffer.set(index, self);
-        index = if (index < buffer.capacity() - 1) index + 1 else 0;
+        index = (index + 1) % buffer.capacity();
     }
 
     fn update(self: *@This()) void {
@@ -682,22 +682,16 @@ fn startGame() void {
 
 export fn update() void {
     frame_count += 1;
+    gamepad1.update();
     switch (scene) {
-        .game => {
-            updateGame();
-        },
-        .title => {
-            updateTitle();
-        },
-        .gameover => {
-            updateGameover();
-        },
+        .game => updateGame(),
+        .title => updateTitle(),
+        .gameover => updateGameover(),
     }
 }
 
 fn updateGame() void {
     // player
-    gamepad1.update();
     if (player1.alive) {
         player1.update(gamepad1);
         player1.draw();
@@ -795,7 +789,6 @@ fn updateGame() void {
 }
 
 fn updateTitle() void {
-    gamepad1.update();
     if (gamepad1.isReleased(w4.BUTTON_1) or gamepad1.isReleased(w4.BUTTON_2)) {
         startGame();
         sound(440, toneDur(0, 0, 0, 20), sound_vol, w4.TONE_TRIANGLE);
@@ -831,7 +824,6 @@ fn updateTitle() void {
 }
 
 fn updateGameover() void {
-    gamepad1.update();
     if (gamepad1.isReleased(w4.BUTTON_1) or gamepad1.isReleased(w4.BUTTON_2)) {
         scene = .title;
         sound(440, toneDur(0, 0, 0, 20), sound_vol, w4.TONE_TRIANGLE);
