@@ -143,9 +143,7 @@ const Player = struct {
             .x = self.pos.x + self.look_dir.x * 2 - target.x,
             .y = self.pos.y + self.look_dir.y * 2 - target.y,
         };
-        return diff.length() < (7.5 + radius) and
-            diff.x * self.look_dir.x <= 0 and
-            diff.y * self.look_dir.y <= 0;
+        return diff.length() < 7.5 + radius and diff.dot(self.look_dir) <= 0;
     }
 
     fn collideAttack(self: @This(), target: Vec(f64), radius: f64) bool {
