@@ -99,7 +99,7 @@ const Player = struct {
             w4.DRAW_COLORS.* = 0x22;
             drawCircle(x + round(i32, self.look_dir.x * 5), y + round(i32, self.look_dir.y * 5), 17);
             w4.DRAW_COLORS.* = 0x11;
-            drawCircle(x, y, 15 - self.attack_timer);
+            drawCircle(x, y, 15 - @intCast(u32, self.attack_timer));
         }
         // player
         w4.DRAW_COLORS.* = if (self.dodge_timer > 0) 0x31 else 0x33;
@@ -580,7 +580,7 @@ const Explosion = struct {
 
     fn draw(self: @This()) void {
         w4.DRAW_COLORS.* = self.color;
-        if (self.timer > 0) drawCircle(self.pos.x, self.pos.y, self.timer * 2 - 1);
+        if (self.timer > 0) drawCircle(self.pos.x, self.pos.y, @intCast(u32, self.timer) * 2 - 1);
     }
 };
 
@@ -863,12 +863,13 @@ fn drawPixel(x: i32, y: i32) void {
     w4.rect(x, y, 1, 1);
 }
 
-fn drawCircle(x: i32, y: i32, size: i32) void {
-    w4.oval(x - @divFloor(size, 2), y - @divFloor(size, 2), size, size);
+fn drawCircle(x: i32, y: i32, size: u32) void {
+    const s = @intCast(i32, size / 2);
+    w4.oval(x - s, y - s, size, size);
 }
 
 fn drawCircleF(x: f64, y: f64, size: f64) void {
-    const s = round(i32, size);
+    const s = round(u32, size);
     w4.oval(round(i32, x - (size / 2)), round(i32, y - (size / 2)), s, s);
 }
 
