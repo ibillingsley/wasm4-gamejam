@@ -231,30 +231,30 @@ const Spider = struct {
     }
 
     fn draw(self: @This()) void {
-        const x = self.pos.x;
-        const y = self.pos.y;
+        const x = round(i32, self.pos.x);
+        const y = round(i32, self.pos.y);
         const flip: f64 = if ((frame_count / 5 + self.id) % 2 == 0) 1 else -1;
         w4.DRAW_COLORS.* = 4;
-        drawLineF(
-            x + self.dir.x * (2 + flip) + self.dir.y * 4,
-            y + self.dir.y * (2 + flip) - self.dir.x * 4,
-            x - self.dir.x * (2 + flip) - self.dir.y * 4,
-            y - self.dir.y * (2 + flip) + self.dir.x * 4,
+        w4.line(
+            x + round(i32, self.dir.x * (2 + flip) + self.dir.y * 4),
+            y + round(i32, self.dir.y * (2 + flip) - self.dir.x * 4),
+            x - round(i32, self.dir.x * (2 + flip) + self.dir.y * 4),
+            y - round(i32, self.dir.y * (2 + flip) - self.dir.x * 4),
         );
-        drawLineF(
-            x + self.dir.x * (2 - flip) - self.dir.y * 4,
-            y + self.dir.y * (2 - flip) + self.dir.x * 4,
-            x - self.dir.x * (2 - flip) + self.dir.y * 4,
-            y - self.dir.y * (2 - flip) - self.dir.x * 4,
+        w4.line(
+            x + round(i32, self.dir.x * (2 - flip) - self.dir.y * 4),
+            y + round(i32, self.dir.y * (2 - flip) + self.dir.x * 4),
+            x - round(i32, self.dir.x * (2 - flip) - self.dir.y * 4),
+            y - round(i32, self.dir.y * (2 - flip) + self.dir.x * 4),
         );
-        drawCircleF(x, y, 5);
+        drawCircle(x, y, 5);
         drawPixel(
-            round(i32, x + self.dir.x * 4 + self.dir.y * 1.5),
-            round(i32, y + self.dir.y * 4 - self.dir.x * 1.5),
+            x + round(i32, self.dir.x * 4 + self.dir.y * 1.5),
+            y + round(i32, self.dir.y * 4 - self.dir.x * 1.5),
         );
         drawPixel(
-            round(i32, x + self.dir.x * 4 - self.dir.y * 1.5),
-            round(i32, y + self.dir.y * 4 + self.dir.x * 1.5),
+            x + round(i32, self.dir.x * 4 - self.dir.y * 1.5),
+            y + round(i32, self.dir.y * 4 + self.dir.x * 1.5),
         );
     }
 
