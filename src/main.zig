@@ -421,8 +421,8 @@ const Snake = struct {
             self.kill();
         } else if (player.collideBlock(self.pos, radius)) {
             const bump = std.math.max(11 - distance, 1.5);
-            self.pos.x += player.look_dir.x * bump;
-            self.pos.y += player.look_dir.y * bump;
+            player.pos.x -= player.look_dir.x * bump;
+            player.pos.y -= player.look_dir.y * bump;
             self.speed.reflect(player.look_dir);
             sound(500, toneDur(0, 0, 0, 3), sound_vol * 0.3, w4.TONE_NOISE);
         } else if (player.collideBody(self.pos, radius)) {
