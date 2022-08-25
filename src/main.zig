@@ -302,7 +302,7 @@ const Cannon = struct {
         if (player.collideAttack(self.pos, 7)) {
             self.kill();
         } else if (player.collideBlock(self.pos, 3)) {
-            const bump = std.math.max(11 - distance, 1.5);
+            const bump = std.math.max(11.5 - distance, 1.5);
             self.pos.x += player.look_dir.x * bump;
             self.pos.y += player.look_dir.y * bump;
             self.speed.reflect(player.look_dir);
@@ -420,9 +420,11 @@ const Snake = struct {
         if (player.collideAttack(self.pos, radius)) {
             self.kill();
         } else if (player.collideBlock(self.pos, radius)) {
-            const bump = std.math.max(11 - distance, 1.5);
+            const bump = std.math.max(8.5 + radius - distance, 1.5) / 2;
             player.pos.x -= player.look_dir.x * bump;
             player.pos.y -= player.look_dir.y * bump;
+            self.pos.x += player.look_dir.x * bump;
+            self.pos.y += player.look_dir.y * bump;
             self.speed.reflect(player.look_dir);
             sound(500, toneDur(0, 0, 0, 3), sound_vol * 0.3, w4.TONE_NOISE);
         } else if (player.collideBody(self.pos, radius)) {
