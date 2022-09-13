@@ -103,6 +103,7 @@ const Player = struct {
         }
         // player
         w4.DRAW_COLORS.* = if (self.dodge_timer > 0) 0x31 else 0x33;
+        w4.rect(x - 3, y - 3, 7, 7);
         drawCircle(x + round(i32, self.move_dir.x * -4), y + round(i32, self.move_dir.y * -4), 5);
         drawCircle(x, y, 9);
         w4.DRAW_COLORS.* = 2;
@@ -803,11 +804,11 @@ fn updateTitle() void {
         save();
     }
     w4.DRAW_COLORS.* = 0x33;
-    w4.oval(41, 42, 77, 79);
+    w4.oval(41, 41, 78, 79);
     w4.DRAW_COLORS.* = 1;
-    w4.rect(40, 80, 80, 50);
+    w4.rect(40, 80, 80, 42);
     w4.DRAW_COLORS.* = 0x33;
-    w4.oval(41, 66, 77, 27);
+    w4.oval(42, 66, 76, 27);
     w4.DRAW_COLORS.* = 4;
     w4.text("ONE SLIME ARMY", 24, 20);
     w4.DRAW_COLORS.* = 2;
