@@ -9,7 +9,7 @@ const Gamepad = struct {
     released: u8 = 0,
     axis: Vec(f64) = .{},
 
-    fn update(self: *@This()) void {
+    fn update(self: *Gamepad) void {
         self.prev = self.down;
         self.down = self.ptr.*;
         self.pressed = self.down & (self.down ^ self.prev);
@@ -29,15 +29,15 @@ const Gamepad = struct {
         }
     }
 
-    fn isDown(self: @This(), button: u8) bool {
+    fn isDown(self: Gamepad, button: u8) bool {
         return self.down & button != 0;
     }
 
-    fn isPressed(self: @This(), button: u8) bool {
+    fn isPressed(self: Gamepad, button: u8) bool {
         return self.pressed & button != 0;
     }
 
-    fn isReleased(self: @This(), button: u8) bool {
+    fn isReleased(self: Gamepad, button: u8) bool {
         return self.released & button != 0;
     }
 };
@@ -58,7 +58,7 @@ const Player = struct {
     const pos_min: f64 = 4;
     const pos_max: f64 = screen_size - 5;
 
-    fn update(self: *@This(), gamepad: Gamepad) void {
+    fn update(self: *Player, gamepad: Gamepad) void {
         // timers
         if (self.attack_timer > attack_min) self.attack_timer -= 1;
         if (self.dodge_timer > dodge_min) self.dodge_timer -= 1;
@@ -91,7 +91,7 @@ const Player = struct {
         self.pos.y = std.math.clamp(self.pos.y + dir.y * speed, pos_min, pos_max);
     }
 
-    fn draw(self: @This()) void {
+    fn draw(self: Player) void {
         const x: i32 = round(i32, self.pos.x);
         const y: i32 = round(i32, self.pos.y);
         // attack
@@ -132,12 +132,12 @@ const Player = struct {
         }
     }
 
-    fn collideBody(self: @This(), target: Vec(f64), radius: f64) bool {
+    fn collideBody(self: Player, target: Vec(f64), radius: f64) bool {
         if (!self.alive or self.dodge_timer > 0) return false;
         return self.pos.distance(target) < 4.5 + radius;
     }
 
-    fn collideBlock(self: @This(), target: Vec(f64), radius: f64) bool {
+    fn collideBlock(self: Player, target: Vec(f64), radius: f64) bool {
         if (!self.alive or !self.blocking) return false;
         var diff = Vec(f64){
             .x = self.pos.x + self.look_dir.x * 2 - target.x,
@@ -146,7 +146,7 @@ const Player = struct {
         return diff.length() < 7.5 + radius and diff.dot(self.look_dir) <= 0;
     }
 
-    fn collideAttack(self: @This(), target: Vec(f64), radius: f64) bool {
+    fn collideAttack(self: Player, target: Vec(f64), radius: f64) bool {
         if (!self.alive or self.attack_timer <= 0) return false;
         var diff = Vec(f64){
             .x = self.pos.x + self.look_dir.x * 5 - target.x,
@@ -155,7 +155,7 @@ const Player = struct {
         return diff.length() < 8.5 + radius;
     }
 
-    fn kill(self: *@This()) void {
+    fn kill(self: *Player) void {
         self.alive = false;
         end_frame = frame_count;
         (Explosion{ .pos = self.pos.toInt(i32), .duration = 25 }).spawn();
@@ -176,10 +176,10 @@ const Spider = struct {
 
     const accel = 0.05;
     const speed_max = 1.5;
-    var buffer = std.BoundedArray(@This(), 100).init(0) catch unreachable;
+    var buffer = std.BoundedArray(Spider, 100).init(0) catch unreachable;
     var closest: f64 = -1;
 
-    fn init(id: usize) @This() {
+    fn init(id: usize) Spider {
         const x = rng.float(f64) * 100 - 50;
         const y = rng.float(f64) * 100 - 50;
         return .{
@@ -195,7 +195,7 @@ const Spider = struct {
         };
     }
 
-    fn update(self: *@This(), player: *Player) void {
+    fn update(self: *Spider, player: *Player) void {
         // collision
         var target = player.pos.subtract(self.pos);
         const distance = target.length();
@@ -230,7 +230,7 @@ const Spider = struct {
         self.pos.y += self.speed.y;
     }
 
-    fn draw(self: @This()) void {
+    fn draw(self: Spider) void {
         const x = round(i32, self.pos.x);
         const y = round(i32, self.pos.y);
         const flip: f64 = if ((frame_count / 5 + self.id) % 2 == 0) 1 else -1;
@@ -258,7 +258,7 @@ const Spider = struct {
         );
     }
 
-    fn kill(self: *@This()) void {
+    fn kill(self: *Spider) void {
         self.alive = false;
         kills += 1;
         (Explosion{ .pos = self.pos.toInt(i32), .duration = 7 }).spawn();
@@ -277,9 +277,9 @@ const Cannon = struct {
 
     const accel = 0.01;
     const speed_max = 0.4;
-    var buffer = std.BoundedArray(@This(), 20).init(0) catch unreachable;
+    var buffer = std.BoundedArray(Cannon, 20).init(0) catch unreachable;
 
-    fn init(id: usize) @This() {
+    fn init(id: usize) Cannon {
         const x = rng.float(f64) * 100 - 50;
         const y = rng.float(f64) * 100 - 50;
         return .{
@@ -295,7 +295,7 @@ const Cannon = struct {
         };
     }
 
-    fn update(self: *@This(), player: *Player) void {
+    fn update(self: *Cannon, player: *Player) void {
         // collision
         var target = player.pos.subtract(self.pos);
         const distance = target.length();
@@ -344,7 +344,7 @@ const Cannon = struct {
         }
     }
 
-    fn draw(self: @This()) void {
+    fn draw(self: Cannon) void {
         const x = self.pos.x;
         const y = self.pos.y;
         w4.DRAW_COLORS.* = 0x33;
@@ -371,7 +371,7 @@ const Cannon = struct {
         );
     }
 
-    fn kill(self: *@This()) void {
+    fn kill(self: *Cannon) void {
         self.alive = false;
         kills += 1;
         (Explosion{ .pos = self.pos.toInt(i32), .duration = 8 }).spawn();
@@ -388,10 +388,10 @@ const Snake = struct {
     size: f64,
 
     const speed_max = 2;
-    var buffer = std.BoundedArray(@This(), 50).init(0) catch unreachable;
+    var buffer = std.BoundedArray(Snake, 50).init(0) catch unreachable;
     var closest: f64 = -1;
 
-    fn init(id: usize) @This() {
+    fn init(id: usize) Snake {
         const pos: Vec(f64) = blk: {
             if (id > 0) {
                 const previous = buffer.get(id - 1);
@@ -411,7 +411,7 @@ const Snake = struct {
         };
     }
 
-    fn update(self: *@This(), player: *Player) void {
+    fn update(self: *Snake, player: *Player) void {
         // collision
         var target = player.pos.subtract(self.pos);
         const distance = target.length();
@@ -456,7 +456,7 @@ const Snake = struct {
         self.pos.y += self.speed.y;
     }
 
-    fn draw(self: @This()) void {
+    fn draw(self: Snake) void {
         const x = self.pos.x;
         const y = self.pos.y;
         const flip: f64 = if ((frame_count / 5 + self.id) % 2 == 0) 1 else -1;
@@ -489,7 +489,7 @@ const Snake = struct {
         drawCircleF(x, y, self.size);
     }
 
-    fn kill(self: *@This()) void {
+    fn kill(self: *Snake) void {
         self.alive = false;
         kills += 1;
         (Explosion{ .pos = self.pos.toInt(i32), .duration = 9 }).spawn();
@@ -505,16 +505,16 @@ const Projectile = struct {
     timer: i32 = 0,
     hostile: bool = true,
 
-    var buffer = std.BoundedArray(@This(), 20).init(0) catch unreachable;
+    var buffer = std.BoundedArray(Projectile, 20).init(0) catch unreachable;
     var index: usize = 0;
 
-    fn spawn(self: @This()) void {
+    fn spawn(self: Projectile) void {
         if (buffer.len < buffer.capacity()) _ = buffer.addOneAssumeCapacity();
         buffer.set(index, self);
         index = (index + 1) % buffer.capacity();
     }
 
-    fn update(self: *@This(), player: *Player) void {
+    fn update(self: *Projectile, player: *Player) void {
         self.timer += 1;
         if (self.timer > self.duration) self.alive = false;
         // collision
@@ -551,7 +551,7 @@ const Projectile = struct {
         self.pos.y += self.speed.y;
     }
 
-    fn draw(self: @This()) void {
+    fn draw(self: Projectile) void {
         const x = self.pos.x;
         const y = self.pos.y;
         w4.DRAW_COLORS.* = if (self.hostile) 0x22 else 0x21;
@@ -566,21 +566,21 @@ const Explosion = struct {
     timer: i32 = 0,
     color: u16 = 0x40,
 
-    var buffer = std.BoundedArray(@This(), 10).init(0) catch unreachable;
+    var buffer = std.BoundedArray(Explosion, 10).init(0) catch unreachable;
     var index: usize = 0;
 
-    fn spawn(self: @This()) void {
+    fn spawn(self: Explosion) void {
         if (buffer.len < buffer.capacity()) _ = buffer.addOneAssumeCapacity();
         buffer.set(index, self);
         index = (index + 1) % buffer.capacity();
     }
 
-    fn update(self: *@This()) void {
+    fn update(self: *Explosion) void {
         self.timer += 1;
         if (self.timer > self.duration) self.alive = false;
     }
 
-    fn draw(self: @This()) void {
+    fn draw(self: Explosion) void {
         w4.DRAW_COLORS.* = self.color;
         if (self.timer > 0) drawCircle(self.pos.x, self.pos.y, @intCast(u32, self.timer) * 2 - 1);
     }
@@ -588,32 +588,32 @@ const Explosion = struct {
 
 fn Vec(comptime T: type) type {
     return struct {
-        const Self = @This();
+        const VecT = @This();
 
         x: T = 0,
         y: T = 0,
 
-        fn length(self: Self) T {
+        fn length(self: VecT) T {
             return std.math.sqrt(self.x * self.x + self.y * self.y);
         }
 
-        fn dot(self: Self, vec: Self) T {
+        fn dot(self: VecT, vec: VecT) T {
             return self.x * vec.x + self.y * vec.y;
         }
 
-        fn add(self: Self, vec: Self) Self {
+        fn add(self: VecT, vec: VecT) VecT {
             return .{ .x = self.x + vec.x, .y = self.y + vec.y };
         }
 
-        fn subtract(self: Self, vec: Self) Self {
+        fn subtract(self: VecT, vec: VecT) VecT {
             return .{ .x = self.x - vec.x, .y = self.y - vec.y };
         }
 
-        fn distance(self: Self, vec: Self) T {
+        fn distance(self: VecT, vec: VecT) T {
             return self.subtract(vec).length();
         }
 
-        fn normalize(self: *Self) void {
+        fn normalize(self: *VecT) void {
             const len = self.length();
             if (len > 0) {
                 self.x /= len;
@@ -621,13 +621,13 @@ fn Vec(comptime T: type) type {
             }
         }
 
-        fn reflect(self: *Self, normal: Self) void {
+        fn reflect(self: *VecT, normal: VecT) void {
             const d = self.dot(normal);
             self.x -= 2 * d * normal.x;
             self.y -= 2 * d * normal.y;
         }
 
-        fn toInt(self: Self, comptime T2: type) Vec(T2) {
+        fn toInt(self: VecT, comptime T2: type) Vec(T2) {
             return .{
                 .x = round(T2, self.x),
                 .y = round(T2, self.y),
@@ -695,8 +695,7 @@ fn updateGame() void {
     if (player1.alive) {
         player1.update(gamepad1);
         player1.draw();
-    }
-    if (!player1.alive and frame_count - end_frame > 120) {
+    } else if (frame_count - end_frame > 120) {
         scene = .gameover;
     }
     // enemies
