@@ -879,7 +879,7 @@ fn drawLineF(x1: f64, y1: f64, x2: f64, y2: f64) void {
     w4.line(round(i32, x1), round(i32, y1), round(i32, x2), round(i32, y2));
 }
 
-fn drawInt(value: anytype, x: i32, y: i32, len: comptime_int) void {
+fn drawInt(value: anytype, x: i32, y: i32, comptime len: u32) void {
     var buffer: [len]u8 = undefined;
     w4.text(std.fmt.bufPrintIntToSlice(buffer[0..], value, 10, .lower, .{}), x, y);
 }
