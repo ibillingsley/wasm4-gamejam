@@ -1,7 +1,7 @@
 # One Slime Army
 
 An arcade endless wave survival game for the [WASM-4](https://wasm4.org) fantasy console,
-[Game Jam #2](https://itch.io/jam/wasm4-v2), written in [Zig](https://ziglang.org/) version 0.9.1
+[Game Jam #2](https://itch.io/jam/wasm4-v2), written in [Zig](https://ziglang.org/) version 0.10.0
 
 ![](img/screenshot-1x2.png)
 ![](img/screenshot-2x2.png)
