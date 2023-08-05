@@ -1,7 +1,7 @@
 # One Slime Army
 
 An arcade endless wave survival game for the [WASM-4](https://wasm4.org) fantasy console,
-[Game Jam #2](https://itch.io/jam/wasm4-v2), written in [Zig](https://ziglang.org/) version 0.10.0
+[Game Jam #2](https://itch.io/jam/wasm4-v2), written in [Zig](https://ziglang.org/).
 
 ![](img/screenshot-1x2.png)
 ![](img/screenshot-2x2.png)
@@ -22,13 +22,19 @@ Battle hordes of enemies as a humble slime equipped with his trusty sword and sh
 Build the cart by running:
 
 ```shell
-zig build -Drelease-small=true
+zig build -Drelease
 ```
 
 Then run it with:
 
 ```shell
 w4 run zig-out/lib/cart.wasm
+```
+
+Build release bundle with:
+
+```shell
+zig build -Drelease bundle
 ```
 
 For more info about setting up WASM-4, see the [quickstart guide](https://wasm4.org/docs/getting-started/setup?code-lang=zig#quickstart).

@@ -85,7 +85,7 @@ const Player = struct {
             sound(toneFreq(250, 200), toneDur(3, 0, 0, 0), sound_vol * 0.6, w4.TONE_NOISE);
         }
         // movement
-        const speed = if (self.dodge_timer > 0) @intToFloat(f64, self.dodge_timer) / 3.0 else self.move_speed;
+        const speed = if (self.dodge_timer > 0) toFloat(self.dodge_timer) / 3.0 else self.move_speed;
         const dir = if (self.dodge_timer > 0) self.dodge_dir else self.move_dir;
         self.pos.x = std.math.clamp(self.pos.x + dir.x * speed, pos_min, pos_max);
         self.pos.y = std.math.clamp(self.pos.y + dir.y * speed, pos_min, pos_max);
@@ -99,7 +99,7 @@ const Player = struct {
             w4.DRAW_COLORS.* = 0x22;
             drawCircle(x + round(i32, self.look_dir.x * 5), y + round(i32, self.look_dir.y * 5), 17);
             w4.DRAW_COLORS.* = 0x11;
-            drawCircle(x, y, 15 - @intCast(u32, self.attack_timer));
+            drawCircle(x, y, @intCast(15 - self.attack_timer));
         }
         // player
         w4.DRAW_COLORS.* = if (self.dodge_timer > 0) 0x31 else 0x33;
@@ -204,7 +204,7 @@ const Spider = struct {
         if (player.collideAttack(self.pos, 6)) {
             self.kill();
         } else if (player.collideBlock(self.pos, 2.5)) {
-            const bump = std.math.max(11 - distance, 1.5);
+            const bump = @max(11 - distance, 1.5);
             self.pos.x += player.look_dir.x * bump;
             self.pos.y += player.look_dir.y * bump;
             self.speed.reflect(player.look_dir);
@@ -303,7 +303,7 @@ const Cannon = struct {
         if (player.collideAttack(self.pos, 7)) {
             self.kill();
         } else if (player.collideBlock(self.pos, 3)) {
-            const bump = std.math.max(11.5 - distance, 1.5);
+            const bump = @max(11.5 - distance, 1.5);
             self.pos.x += player.look_dir.x * bump;
             self.pos.y += player.look_dir.y * bump;
             self.speed.reflect(player.look_dir);
@@ -408,7 +408,7 @@ const Snake = struct {
         return .{
             .id = id,
             .pos = pos,
-            .size = std.math.max(17 - @intToFloat(f64, id), 9),
+            .size = @floatFromInt(@max(17 -| id, 9)),
         };
     }
 
@@ -421,7 +421,7 @@ const Snake = struct {
         if (player.collideAttack(self.pos, radius)) {
             self.kill();
         } else if (player.collideBlock(self.pos, radius)) {
-            const bump = std.math.max(8.5 + radius - distance, 1.5) / 2;
+            const bump = @max(8.5 + radius - distance, 1.5) / 2;
             player.pos.x -= player.look_dir.x * bump;
             player.pos.y -= player.look_dir.y * bump;
             self.pos.x += player.look_dir.x * bump;
@@ -433,7 +433,7 @@ const Snake = struct {
         }
         // movement
         var move_target = target;
-        var accel: f64 = std.math.max((100 - distance) * 0.003, 0.05);
+        var accel: f64 = @max((100 - distance) * 0.003, 0.05);
         if (self.id > 0) {
             const previous = buffer.get(self.id - 1);
             if (previous.alive) {
@@ -583,7 +583,7 @@ const Explosion = struct {
 
     fn draw(self: Explosion) void {
         w4.DRAW_COLORS.* = self.color;
-        if (self.timer > 0) drawCircle(self.pos.x, self.pos.y, @intCast(u32, self.timer) * 2 - 1);
+        if (self.timer > 0) drawCircle(self.pos.x, self.pos.y, @intCast(self.timer * 2 - 1));
     }
 };
 
@@ -752,15 +752,15 @@ fn updateGame() void {
     if (wave_clear) {
         wave += 1;
         const boss = wave % 10 == 0;
-        const num_snake = std.math.min(
+        const num_snake = @min(
             if (boss) wave else 0,
             Snake.buffer.capacity(),
         );
-        const num_cannons = std.math.min(
+        const num_cannons = @min(
             (if (boss) (wave -| 10) / 4 else wave) / 3,
             Cannon.buffer.capacity(),
         );
-        const num_spiders = std.math.min(
+        const num_spiders = @min(
             (if (boss) (wave -| 10) / 4 else wave) -| num_cannons,
             Spider.buffer.capacity(),
         );
@@ -849,14 +849,14 @@ fn save() void {
         round(u32, sound_vol * 100),
         hiscore,
     };
-    _ = w4.diskw(@ptrCast([*]u8, &data), @sizeOf(@TypeOf(data)));
+    _ = w4.diskw(@ptrCast(&data), @sizeOf(@TypeOf(data)));
 }
 
 fn load() void {
     var data: [2]u32 = .{ 0, 0 };
-    const bytes = w4.diskr(@ptrCast([*]u8, &data), @sizeOf(@TypeOf(data)));
+    const bytes = w4.diskr(@ptrCast(&data), @sizeOf(@TypeOf(data)));
     if (bytes > 0) {
-        sound_vol = @intToFloat(f64, data[0]) / 100;
+        sound_vol = toFloat(data[0]) / 100;
         hiscore = data[1];
     }
 }
@@ -866,7 +866,7 @@ fn drawPixel(x: i32, y: i32) void {
 }
 
 fn drawCircle(x: i32, y: i32, size: u32) void {
-    const s = @intCast(i32, size / 2);
+    const s: i32 = @intCast(size / 2);
     w4.oval(x - s, y - s, size, size);
 }
 
@@ -902,5 +902,9 @@ fn toneVol(peak: u32, volume: u32) u32 {
 }
 
 fn round(comptime T: type, float: anytype) T {
-    return @floatToInt(T, std.math.round(float));
+    return @as(T, @intFromFloat(std.math.round(float)));
+}
+
+fn toFloat(int: anytype) f64 {
+    return @as(f64, @floatFromInt(int));
 }
