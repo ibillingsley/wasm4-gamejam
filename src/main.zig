@@ -159,9 +159,9 @@ const Player = struct {
     fn kill(self: *Player) void {
         self.alive = false;
         end_frame = frame_count;
-        (Explosion{ .pos = self.pos.toInt(i32), .duration = 25 }).spawn();
-        (Explosion{ .pos = self.pos.toInt(i32), .duration = 27, .timer = -3 }).spawn();
-        (Explosion{ .pos = self.pos.toInt(i32), .duration = 18, .timer = -8, .color = 0x20 }).spawn();
+        Explosion.spawn(.{ .pos = self.pos.toInt(i32), .duration = 25 });
+        Explosion.spawn(.{ .pos = self.pos.toInt(i32), .duration = 27, .timer = -3 });
+        Explosion.spawn(.{ .pos = self.pos.toInt(i32), .duration = 18, .timer = -8, .color = 0x20 });
         sound(toneFreq(240, 20), toneDur(0, 0, 0, 60), sound_vol, w4.TONE_NOISE);
         sound(440, toneDur(50, 0, 50, 50), sound_vol, w4.TONE_TRIANGLE);
     }
@@ -262,7 +262,7 @@ const Spider = struct {
     fn kill(self: *Spider) void {
         self.alive = false;
         kills += 1;
-        (Explosion{ .pos = self.pos.toInt(i32), .duration = 7 }).spawn();
+        Explosion.spawn(.{ .pos = self.pos.toInt(i32), .duration = 7 });
         sound(toneFreq(200, 60), toneDur(0, 0, 0, 20), sound_vol, w4.TONE_NOISE);
     }
 };
@@ -336,11 +336,11 @@ const Cannon = struct {
             self.pos.y > 0 and self.pos.y < screen_size and
             (frame_count + self.id * 10) % 100 == 0)
         {
-            (Projectile{
+            Projectile.spawn(.{
                 .pos = .{ .x = self.pos.x + self.look_dir.x * 4, .y = self.pos.y + self.look_dir.y * 4 },
                 .speed = .{ .x = target.x * 2, .y = target.y * 2 },
                 .duration = 80,
-            }).spawn();
+            });
             sound(toneFreq(300, 100), toneDur(0, 0, 0, 10), sound_vol * 0.7, w4.TONE_PULSE1 | w4.TONE_MODE2);
         }
     }
@@ -375,7 +375,7 @@ const Cannon = struct {
     fn kill(self: *Cannon) void {
         self.alive = false;
         kills += 1;
-        (Explosion{ .pos = self.pos.toInt(i32), .duration = 8 }).spawn();
+        Explosion.spawn(.{ .pos = self.pos.toInt(i32), .duration = 8 });
         sound(toneFreq(180, 50), toneDur(0, 0, 0, 22), sound_vol, w4.TONE_NOISE);
     }
 };
@@ -493,7 +493,7 @@ const Snake = struct {
     fn kill(self: *Snake) void {
         self.alive = false;
         kills += 1;
-        (Explosion{ .pos = self.pos.toInt(i32), .duration = 9 }).spawn();
+        Explosion.spawn(.{ .pos = self.pos.toInt(i32), .duration = 9 });
         sound(toneFreq(170, 40), toneDur(0, 0, 0, 25), sound_vol, w4.TONE_NOISE);
     }
 };
