@@ -7,7 +7,7 @@ const Gamepad = struct {
     prev: u8 = 0,
     pressed: u8 = 0,
     released: u8 = 0,
-    axis: Vec(f64) = .{},
+    axis: Vec(f32) = .{},
 
     fn update(self: *Gamepad) void {
         self.prev = self.down;
@@ -44,19 +44,19 @@ const Gamepad = struct {
 
 const Player = struct {
     alive: bool = true,
-    pos: Vec(f64) = .{ .x = screen_size / 2, .y = screen_size / 2 + 15 },
-    move_speed: f64 = 2,
-    move_dir: Vec(f64) = .{},
-    look_dir: Vec(f64) = .{ .x = 0, .y = -1 },
-    dodge_dir: Vec(f64) = .{ .x = 0, .y = -1 },
+    pos: Vec(f32) = .{ .x = screen_size / 2, .y = screen_size / 2 + 15 },
+    move_speed: f32 = 2,
+    move_dir: Vec(f32) = .{},
+    look_dir: Vec(f32) = .{ .x = 0, .y = -1 },
+    dodge_dir: Vec(f32) = .{ .x = 0, .y = -1 },
     dodge_timer: i32 = dodge_min,
     attack_timer: i32 = attack_min,
     blocking: bool = false,
 
     const attack_min = -5;
     const dodge_min = -10;
-    const pos_min: f64 = 4;
-    const pos_max: f64 = screen_size - 5;
+    const pos_min: f32 = 4;
+    const pos_max: f32 = screen_size - 5;
 
     fn update(self: *Player, gamepad: Gamepad) void {
         // timers
@@ -133,23 +133,23 @@ const Player = struct {
         }
     }
 
-    fn collideBody(self: Player, target: Vec(f64), radius: f64) bool {
+    fn collideBody(self: Player, target: Vec(f32), radius: f32) bool {
         if (!self.alive or self.dodge_timer > 0) return false;
         return self.pos.distance(target) < 4.5 + radius;
     }
 
-    fn collideBlock(self: Player, target: Vec(f64), radius: f64) bool {
+    fn collideBlock(self: Player, target: Vec(f32), radius: f32) bool {
         if (!self.alive or !self.blocking) return false;
-        var diff = Vec(f64){
+        var diff = Vec(f32){
             .x = self.pos.x + self.look_dir.x * 2 - target.x,
             .y = self.pos.y + self.look_dir.y * 2 - target.y,
         };
         return diff.length() < 7.5 + radius and diff.dot(self.look_dir) <= 0;
     }
 
-    fn collideAttack(self: Player, target: Vec(f64), radius: f64) bool {
+    fn collideAttack(self: Player, target: Vec(f32), radius: f32) bool {
         if (!self.alive or self.attack_timer <= 0) return false;
-        var diff = Vec(f64){
+        var diff = Vec(f32){
             .x = self.pos.x + self.look_dir.x * 5 - target.x,
             .y = self.pos.y + self.look_dir.y * 5 - target.y,
         };
@@ -170,19 +170,19 @@ const Player = struct {
 const Spider = struct {
     id: usize,
     alive: bool = true,
-    pos: Vec(f64),
-    speed: Vec(f64) = .{},
-    dir: Vec(f64) = .{},
-    target_offset: Vec(f64),
+    pos: Vec(f32),
+    speed: Vec(f32) = .{},
+    dir: Vec(f32) = .{},
+    target_offset: Vec(f32),
 
     const accel = 0.05;
     const speed_max = 1.5;
     var buffer = std.BoundedArray(Spider, 100).init(0) catch unreachable;
-    var closest: f64 = -1;
+    var closest: f32 = -1;
 
     fn init(id: usize) Spider {
-        const x = rng.float(f64) * 100 - 50;
-        const y = rng.float(f64) * 100 - 50;
+        const x = rng.float(f32) * 100 - 50;
+        const y = rng.float(f32) * 100 - 50;
         return .{
             .id = id,
             .pos = .{
@@ -190,8 +190,8 @@ const Spider = struct {
                 .y = if (y < 0) -50 + y else screen_size + 50 + y,
             },
             .target_offset = .{
-                .x = rng.float(f64) * 1.2 - 0.6,
-                .y = rng.float(f64) * 1.2 - 0.6,
+                .x = rng.float(f32) * 1.2 - 0.6,
+                .y = rng.float(f32) * 1.2 - 0.6,
             },
         };
     }
@@ -234,7 +234,7 @@ const Spider = struct {
     fn draw(self: Spider) void {
         const x = round(i32, self.pos.x);
         const y = round(i32, self.pos.y);
-        const flip: f64 = if ((frame_count / 5 + self.id) % 2 == 0) 1 else -1;
+        const flip: f32 = if ((frame_count / 5 + self.id) % 2 == 0) 1 else -1;
         w4.DRAW_COLORS.* = 4;
         w4.line(
             x + round(i32, self.dir.x * (2 + flip) + self.dir.y * 4),
@@ -270,19 +270,19 @@ const Spider = struct {
 const Cannon = struct {
     id: usize,
     alive: bool = true,
-    pos: Vec(f64),
-    speed: Vec(f64) = .{},
-    dir: Vec(f64) = .{},
-    look_dir: Vec(f64) = .{},
-    target_offset: Vec(f64),
+    pos: Vec(f32),
+    speed: Vec(f32) = .{},
+    dir: Vec(f32) = .{},
+    look_dir: Vec(f32) = .{},
+    target_offset: Vec(f32),
 
     const accel = 0.01;
     const speed_max = 0.4;
     var buffer = std.BoundedArray(Cannon, 20).init(0) catch unreachable;
 
     fn init(id: usize) Cannon {
-        const x = rng.float(f64) * 100 - 50;
-        const y = rng.float(f64) * 100 - 50;
+        const x = rng.float(f32) * 100 - 50;
+        const y = rng.float(f32) * 100 - 50;
         return .{
             .id = id,
             .pos = .{
@@ -290,8 +290,8 @@ const Cannon = struct {
                 .y = if (y < 0) -10 + y else screen_size + 10 + y,
             },
             .target_offset = .{
-                .x = rng.float(f64) * 1.2 - 0.6,
-                .y = rng.float(f64) * 1.2 - 0.6,
+                .x = rng.float(f32) * 1.2 - 0.6,
+                .y = rng.float(f32) * 1.2 - 0.6,
             },
         };
     }
@@ -312,7 +312,7 @@ const Cannon = struct {
             player.kill();
         }
         // movement
-        var move_target: Vec(f64) = .{
+        var move_target: Vec(f32) = .{
             .x = target.x + self.target_offset.x * distance,
             .y = target.y + self.target_offset.y * distance,
         };
@@ -383,23 +383,23 @@ const Cannon = struct {
 const Snake = struct {
     id: usize,
     alive: bool = true,
-    pos: Vec(f64),
-    speed: Vec(f64) = .{},
-    dir: Vec(f64) = .{},
-    size: f64,
+    pos: Vec(f32),
+    speed: Vec(f32) = .{},
+    dir: Vec(f32) = .{},
+    size: f32,
 
     const speed_max = 2;
     var buffer = std.BoundedArray(Snake, 50).init(0) catch unreachable;
-    var closest: f64 = -1;
+    var closest: f32 = -1;
 
     fn init(id: usize) Snake {
-        const pos: Vec(f64) = blk: {
+        const pos: Vec(f32) = blk: {
             if (id > 0) {
                 const previous = buffer.get(id - 1);
                 break :blk previous.pos;
             }
-            const x = rng.float(f64) * 100 - 50;
-            const y = rng.float(f64) * 100 - 50;
+            const x = rng.float(f32) * 100 - 50;
+            const y = rng.float(f32) * 100 - 50;
             break :blk .{
                 .x = if (x < 0) -50 + x else screen_size + 50 + x,
                 .y = if (y < 0) -50 + y else screen_size + 50 + y,
@@ -433,7 +433,7 @@ const Snake = struct {
         }
         // movement
         var move_target = target;
-        var accel: f64 = @max((100 - distance) * 0.003, 0.05);
+        var accel: f32 = @max((100 - distance) * 0.003, 0.05);
         if (self.id > 0) {
             const previous = buffer.get(self.id - 1);
             if (previous.alive) {
@@ -460,7 +460,7 @@ const Snake = struct {
     fn draw(self: Snake) void {
         const x = self.pos.x;
         const y = self.pos.y;
-        const flip: f64 = if ((frame_count / 5 + self.id) % 2 == 0) 1 else -1;
+        const flip: f32 = if ((frame_count / 5 + self.id) % 2 == 0) 1 else -1;
         w4.DRAW_COLORS.* = 4;
         drawLineF(
             x + (self.dir.x * (2.5 + flip) * 0.1 + self.dir.y * 0.8) * self.size,
@@ -500,8 +500,8 @@ const Snake = struct {
 
 const Projectile = struct {
     alive: bool = true,
-    pos: Vec(f64),
-    speed: Vec(f64),
+    pos: Vec(f32),
+    speed: Vec(f32),
     duration: i32,
     timer: i32 = 0,
     hostile: bool = true,
@@ -637,13 +637,13 @@ fn Vec(comptime T: type) type {
     };
 }
 
-const screen_size: f64 = w4.SCREEN_SIZE;
+const screen_size: f32 = w4.SCREEN_SIZE;
 const Scene = enum { title, game, gameover };
 var scene: Scene = .title;
 var frame_count: u32 = 0;
 var start_frame: u32 = 0;
 var end_frame: u32 = 0;
-var sound_vol: f64 = 0.8;
+var sound_vol: f32 = 0.8;
 var wave: u32 = 0;
 var kills: u32 = 0;
 var hiscore: u32 = 0;
@@ -870,12 +870,12 @@ fn drawCircle(x: i32, y: i32, size: u32) void {
     w4.oval(x - s, y - s, size, size);
 }
 
-fn drawCircleF(x: f64, y: f64, size: f64) void {
+fn drawCircleF(x: f32, y: f32, size: f32) void {
     const s = round(u32, size);
     w4.oval(round(i32, x - (size / 2)), round(i32, y - (size / 2)), s, s);
 }
 
-fn drawLineF(x1: f64, y1: f64, x2: f64, y2: f64) void {
+fn drawLineF(x1: f32, y1: f32, x2: f32, y2: f32) void {
     w4.line(round(i32, x1), round(i32, y1), round(i32, x2), round(i32, y2));
 }
 
@@ -884,7 +884,7 @@ fn drawInt(value: anytype, x: i32, y: i32, comptime len: u32) void {
     w4.text(std.fmt.bufPrintIntToSlice(buffer[0..], value, 10, .lower, .{}), x, y);
 }
 
-fn sound(frequency: u32, duration: u32, volume: f64, flags: u32) void {
+fn sound(frequency: u32, duration: u32, volume: f32, flags: u32) void {
     const vol = std.math.clamp(round(u32, volume * 100), 1, 100);
     w4.tone(frequency, duration, toneVol(vol, vol), flags);
 }
@@ -905,6 +905,6 @@ fn round(comptime T: type, float: anytype) T {
     return @as(T, @intFromFloat(std.math.round(float)));
 }
 
-fn toFloat(int: anytype) f64 {
-    return @as(f64, @floatFromInt(int));
+fn toFloat(int: anytype) f32 {
+    return @as(f32, @floatFromInt(int));
 }
