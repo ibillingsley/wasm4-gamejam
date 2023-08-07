@@ -17,15 +17,17 @@ const Gamepad = struct {
 
         if (!self.isDown(w4.BUTTON_LEFT) and !self.isDown(w4.BUTTON_RIGHT)) {
             self.axis.x = 0;
-        } else {
-            if (self.isPressed(w4.BUTTON_LEFT) or self.isReleased(w4.BUTTON_RIGHT)) self.axis.x = -1;
-            if (self.isPressed(w4.BUTTON_RIGHT) or self.isReleased(w4.BUTTON_LEFT)) self.axis.x = 1;
+        } else if (self.isPressed(w4.BUTTON_LEFT) or self.isReleased(w4.BUTTON_RIGHT)) {
+            self.axis.x = -1;
+        } else if (self.isPressed(w4.BUTTON_RIGHT) or self.isReleased(w4.BUTTON_LEFT)) {
+            self.axis.x = 1;
         }
         if (!self.isDown(w4.BUTTON_UP) and !self.isDown(w4.BUTTON_DOWN)) {
             self.axis.y = 0;
-        } else {
-            if (self.isPressed(w4.BUTTON_UP) or self.isReleased(w4.BUTTON_DOWN)) self.axis.y = -1;
-            if (self.isPressed(w4.BUTTON_DOWN) or self.isReleased(w4.BUTTON_UP)) self.axis.y = 1;
+        } else if (self.isPressed(w4.BUTTON_UP) or self.isReleased(w4.BUTTON_DOWN)) {
+            self.axis.y = -1;
+        } else if (self.isPressed(w4.BUTTON_DOWN) or self.isReleased(w4.BUTTON_UP)) {
+            self.axis.y = 1;
         }
     }
 
