@@ -1,24 +1,24 @@
 const std = @import("std");
 
 pub fn build(b: *std.Build) !void {
-    const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseSmall });
-
-    const lib = b.addSharedLibrary(.{
+    const exe = b.addExecutable(.{
         .name = "cart",
         .root_source_file = .{ .path = "src/main.zig" },
-        .target = .{ .cpu_arch = .wasm32, .os_tag = .freestanding },
-        .optimize = optimize,
+        .target = b.resolveTargetQuery(.{
+            .cpu_arch = .wasm32,
+            .os_tag = .freestanding,
+        }),
+        .optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseSmall }),
     });
 
-    lib.import_memory = true;
-    lib.initial_memory = 65536;
-    lib.max_memory = 65536;
-    lib.stack_size = 14752;
+    exe.entry = .disabled;
+    exe.root_module.export_symbol_names = &[_][]const u8{ "start", "update" };
+    exe.import_memory = true;
+    exe.initial_memory = 65536;
+    exe.max_memory = 65536;
+    exe.stack_size = 14752;
 
-    // Export WASM-4 symbols
-    lib.export_symbol_names = &[_][]const u8{ "start", "update" };
-
-    b.installArtifact(lib);
+    b.installArtifact(exe);
 
     const out = "dist/one-slime-army";
     const opt = b.addSystemCommand(&[_][]const u8{
@@ -29,7 +29,7 @@ pub fn build(b: *std.Build) !void {
         "--output",
         out ++ ".wasm",
     });
-    opt.addArtifactArg(lib);
+    opt.addArtifactArg(exe);
 
     const bundle = b.addSystemCommand(&[_][]const u8{
         "w4",
@@ -48,7 +48,7 @@ pub fn build(b: *std.Build) !void {
     });
 
     const bundle_step = b.step("bundle", "Build, optimize, bundle");
-    bundle_step.dependOn(&lib.step);
+    bundle_step.dependOn(&exe.step);
     bundle_step.dependOn(&opt.step);
     bundle_step.dependOn(&bundle.step);
 }
