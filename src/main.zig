@@ -649,8 +649,8 @@ var sound_vol: f32 = 0.8;
 var wave: u32 = 0;
 var kills: u32 = 0;
 var hiscore: u32 = 0;
-var prng = std.rand.DefaultPrng.init(0);
-var rng: std.rand.Random = undefined;
+var prng = std.Random.DefaultPrng.init(0);
+var rng: std.Random = undefined;
 var gamepad1 = Gamepad{ .ptr = w4.GAMEPAD1 };
 var player1 = Player{};
 

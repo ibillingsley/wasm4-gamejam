@@ -28,7 +28,7 @@ zig build -Drelease
 Then run it with:
 
 ```shell
-w4 run zig-out/lib/cart.wasm
+w4 run zig-out/bin/cart.wasm
 ```
 
 Build release bundle with:

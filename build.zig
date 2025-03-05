@@ -24,6 +24,7 @@ pub fn build(b: *std.Build) !void {
     const opt = b.addSystemCommand(&[_][]const u8{
         "wasm-opt",
         "-O3",
+        "--all-features",
         "--strip-debug",
         "--zero-filled-memory",
         "--output",
