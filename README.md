@@ -22,7 +22,7 @@ Battle hordes of enemies as a humble slime equipped with his trusty sword and sh
 Build the cart by running:
 
 ```shell
-zig build -Drelease
+zig build --release
 ```
 
 Then run it with:
@@ -34,7 +34,7 @@ w4 run zig-out/bin/cart.wasm
 Build release bundle with:
 
 ```shell
-zig build -Drelease bundle
+zig build --release bundle
 ```
 
 For more info about setting up WASM-4, see the [quickstart guide](https://wasm4.org/docs/getting-started/setup?code-lang=zig#quickstart).

@@ -179,7 +179,8 @@ const Spider = struct {
 
     const accel = 0.05;
     const speed_max = 1.5;
-    var buffer = std.BoundedArray(Spider, 100).init(0) catch unreachable;
+    var buffer: [100]Spider = undefined;
+    var len: usize = 0;
     var closest: f32 = -1;
 
     fn init(id: usize) Spider {
@@ -280,7 +281,8 @@ const Cannon = struct {
 
     const accel = 0.01;
     const speed_max = 0.4;
-    var buffer = std.BoundedArray(Cannon, 20).init(0) catch unreachable;
+    var buffer: [20]Cannon = undefined;
+    var len: usize = 0;
 
     fn init(id: usize) Cannon {
         const x = rng.float(f32) * 100 - 50;
@@ -391,13 +393,14 @@ const Snake = struct {
     size: f32,
 
     const speed_max = 2;
-    var buffer = std.BoundedArray(Snake, 50).init(0) catch unreachable;
+    var buffer: [50]Snake = undefined;
+    var len: usize = 0;
     var closest: f32 = -1;
 
     fn init(id: usize) Snake {
         const pos: Vec(f32) = blk: {
             if (id > 0) {
-                const previous = buffer.get(id - 1);
+                const previous = buffer[id - 1];
                 break :blk previous.pos;
             }
             const x = rng.float(f32) * 100 - 50;
@@ -437,7 +440,7 @@ const Snake = struct {
         var move_target = target;
         var accel: f32 = @max((100 - distance) * 0.003, 0.05);
         if (self.id > 0) {
-            const previous = buffer.get(self.id - 1);
+            const previous = buffer[self.id - 1];
             if (previous.alive) {
                 move_target = previous.pos.subtract(self.pos);
                 const dist = move_target.length();
@@ -508,13 +511,14 @@ const Projectile = struct {
     timer: i32 = 0,
     hostile: bool = true,
 
-    var buffer = std.BoundedArray(Projectile, 20).init(0) catch unreachable;
+    var buffer: [20]Projectile = undefined;
+    var len: usize = 0;
     var index: usize = 0;
 
     fn spawn(self: Projectile) void {
-        if (buffer.len < buffer.capacity()) _ = buffer.addOneAssumeCapacity();
-        buffer.set(index, self);
-        index = (index + 1) % buffer.capacity();
+        if (len < buffer.len) len += 1;
+        buffer[index] = self;
+        index = (index + 1) % buffer.len;
     }
 
     fn update(self: *Projectile, player: *Player) void {
@@ -533,17 +537,17 @@ const Projectile = struct {
                 player.kill();
             }
         } else {
-            for (Spider.buffer.slice()) |*spider| {
+            for (Spider.buffer[0..Spider.len]) |*spider| {
                 if (spider.alive and self.pos.distance(spider.pos) < 5) {
                     spider.kill();
                 }
             }
-            for (Cannon.buffer.slice()) |*cannon| {
+            for (Cannon.buffer[0..Cannon.len]) |*cannon| {
                 if (cannon.alive and self.pos.distance(cannon.pos) < 6) {
                     cannon.kill();
                 }
             }
-            for (Snake.buffer.slice()) |*snake| {
+            for (Snake.buffer[0..Snake.len]) |*snake| {
                 if (snake.alive and self.pos.distance(snake.pos) < snake.size / 2) {
                     snake.kill();
                 }
@@ -569,13 +573,14 @@ const Explosion = struct {
     timer: i32 = 0,
     color: u16 = 0x40,
 
-    var buffer = std.BoundedArray(Explosion, 10).init(0) catch unreachable;
+    var buffer: [10]Explosion = undefined;
+    var len: usize = 0;
     var index: usize = 0;
 
     fn spawn(self: Explosion) void {
-        if (buffer.len < buffer.capacity()) _ = buffer.addOneAssumeCapacity();
-        buffer.set(index, self);
-        index = (index + 1) % buffer.capacity();
+        if (len < buffer.len) len += 1;
+        buffer[index] = self;
+        index = (index + 1) % buffer.len;
     }
 
     fn update(self: *Explosion) void {
@@ -673,12 +678,12 @@ fn startGame() void {
     wave = 0;
     kills = 0;
     player1 = Player{};
-    Spider.buffer.len = 0;
-    Cannon.buffer.len = 0;
-    Snake.buffer.len = 0;
-    Projectile.buffer.len = 0;
+    Spider.len = 0;
+    Cannon.len = 0;
+    Snake.len = 0;
+    Projectile.len = 0;
     Projectile.index = 0;
-    Explosion.buffer.len = 0;
+    Explosion.len = 0;
     Explosion.index = 0;
     scene = .game;
 }
@@ -704,7 +709,7 @@ fn updateGame() void {
     // enemies
     var wave_clear = true;
     Spider.closest = -1;
-    for (Spider.buffer.slice()) |*spider| {
+    for (Spider.buffer[0..Spider.len]) |*spider| {
         if (spider.alive) {
             wave_clear = false;
             spider.update(&player1);
@@ -714,7 +719,7 @@ fn updateGame() void {
     if (Spider.closest >= 0 and Spider.closest < 100 and frame_count % 10 == 0) {
         sound(60, toneDur(5, 0, 0, 5), sound_vol * (100 - Spider.closest) / 100, w4.TONE_PULSE2);
     }
-    for (Cannon.buffer.slice()) |*cannon| {
+    for (Cannon.buffer[0..Cannon.len]) |*cannon| {
         if (cannon.alive) {
             wave_clear = false;
             cannon.update(&player1);
@@ -723,10 +728,10 @@ fn updateGame() void {
     }
     Snake.closest = -1;
     {
-        var i = Snake.buffer.len;
+        var i = Snake.len;
         while (i > 0) {
             i -= 1;
-            var snake = &Snake.buffer.buffer[i];
+            var snake = &Snake.buffer[i];
             if (snake.alive) {
                 wave_clear = false;
                 snake.update(&player1);
@@ -737,14 +742,14 @@ fn updateGame() void {
     if (Snake.closest >= 0 and Snake.closest < 200 and frame_count % 12 == 0) {
         sound(toneFreq(90, 60), toneDur(5, 0, 0, 5), sound_vol * (200 - Snake.closest) / 200, w4.TONE_PULSE2 | w4.TONE_MODE3);
     }
-    for (Projectile.buffer.slice()) |*projectile| {
+    for (Projectile.buffer[0..Projectile.len]) |*projectile| {
         if (projectile.alive) {
             projectile.update(&player1);
             projectile.draw();
         }
     }
     // effects
-    for (Explosion.buffer.slice()) |*explosion| {
+    for (Explosion.buffer[0..Explosion.len]) |*explosion| {
         if (explosion.alive) {
             explosion.update();
             explosion.draw();
@@ -754,37 +759,34 @@ fn updateGame() void {
     if (wave_clear) {
         wave += 1;
         const boss = wave % 10 == 0;
-        const num_snake = @min(
+        Snake.len = @min(
             if (boss) wave else 0,
-            Snake.buffer.capacity(),
+            Snake.buffer.len,
         );
-        const num_cannons = @min(
+        Cannon.len = @min(
             (if (boss) (wave -| 10) / 4 else wave) / 3,
-            Cannon.buffer.capacity(),
+            Cannon.buffer.len,
         );
-        const num_spiders = @min(
-            (if (boss) (wave -| 10) / 4 else wave) -| num_cannons,
-            Spider.buffer.capacity(),
+        Spider.len = @min(
+            (if (boss) (wave -| 10) / 4 else wave) -| Cannon.len,
+            Spider.buffer.len,
         );
         {
-            Spider.buffer.len = 0;
             var id: usize = 0;
-            while (id < num_spiders) : (id += 1) {
-                Spider.buffer.appendAssumeCapacity(Spider.init(id));
+            while (id < Spider.len) : (id += 1) {
+                Spider.buffer[id] = Spider.init(id);
             }
         }
         {
-            Cannon.buffer.len = 0;
             var id: usize = 0;
-            while (id < num_cannons) : (id += 1) {
-                Cannon.buffer.appendAssumeCapacity(Cannon.init(id));
+            while (id < Cannon.len) : (id += 1) {
+                Cannon.buffer[id] = Cannon.init(id);
             }
         }
         {
-            Snake.buffer.len = 0;
             var id: usize = 0;
-            while (id < num_snake) : (id += 1) {
-                Snake.buffer.appendAssumeCapacity(Snake.init(id));
+            while (id < Snake.len) : (id += 1) {
+                Snake.buffer[id] = Snake.init(id);
             }
         }
     }
@@ -883,7 +885,9 @@ fn drawLineF(x1: f32, y1: f32, x2: f32, y2: f32) void {
 
 fn drawInt(value: anytype, x: i32, y: i32, comptime len: u32) void {
     var buffer: [len]u8 = undefined;
-    w4.text(std.fmt.bufPrintIntToSlice(buffer[0..], value, 10, .lower, .{}), x, y);
+    var writer = std.io.Writer.fixed(&buffer);
+    writer.printInt(value, 10, .lower, .{}) catch {};
+    w4.text(buffer[0..writer.end], x, y);
 }
 
 fn sound(frequency: u32, duration: u32, volume: f32, flags: u32) void {
