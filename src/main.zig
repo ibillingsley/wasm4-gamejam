@@ -885,7 +885,7 @@ fn drawLineF(x1: f32, y1: f32, x2: f32, y2: f32) void {
 
 fn drawInt(value: anytype, x: i32, y: i32, comptime len: u32) void {
     var buffer: [len]u8 = undefined;
-    var writer = std.io.Writer.fixed(&buffer);
+    var writer = std.Io.Writer.fixed(&buffer);
     writer.printInt(value, 10, .lower, .{}) catch {};
     w4.text(buffer[0..writer.end], x, y);
 }
@@ -908,9 +908,9 @@ fn toneVol(peak: u32, volume: u32) u32 {
 }
 
 fn round(comptime T: type, float: anytype) T {
-    return @as(T, @intFromFloat(std.math.round(float)));
+    return @round(float);
 }
 
 fn toFloat(int: anytype) f32 {
-    return @as(f32, @floatFromInt(int));
+    return @floatFromInt(int);
 }
